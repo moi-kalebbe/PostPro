@@ -10,15 +10,16 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
     build-essential \
     libpq-dev \
-    curl \
+    libffi-dev \
+    pkg-config \
+    cargo \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
-COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 
 # Copy project
 COPY . /app/
