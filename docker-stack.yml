@@ -152,14 +152,8 @@ services:
 
 volumes:
   postpro_static:
-    external: true
-    name: postpro_static
   postpro_media:
-    external: true
-    name: postpro_media
   postpro_redis:
-    external: true
-    name: postpro_redis
 
 ## --------------------------- NETWORKS --------------------------- ##
 
