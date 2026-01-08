@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 define('POSTPRO_VERSION', '1.0.0');
 define('POSTPRO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POSTPRO_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('POSTPRO_API_BASE', 'https://postpro.app/api/v1');
+define('POSTPRO_API_BASE', 'https://postpro.nuvemchat.com/api/v1');
 
 class PostPro_Plugin {
     
@@ -242,6 +242,7 @@ class PostPro_Plugin {
                                 <input type="file" id="postpro_csv_file" name="csv_file" accept=".csv,.xlsx" required>
                                 <p class="description">
                                     A primeira coluna deve conter as keywords.
+                                    <a href="<?php echo POSTPRO_PLUGIN_URL; ?>assets/sample-keywords.csv" download>Baixar planilha de exemplo</a>
                                 </p>
                             </td>
                         </tr>
