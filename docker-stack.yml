@@ -22,7 +22,7 @@ services:
       - ALLOWED_HOSTS=postpro.nuvemchat.com,.nuvemchat.com
 
       ## 🗄️ Supabase PostgreSQL
-      - DATABASE_URL=postgresql://postgres.ncvvedhylfkevpbkorvd:PostPro2025%40@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
+      - DATABASE_URL=postgresql://postgres:PostProLocalDb2026!@postpro_db:5432/postpro_db
       - SUPABASE_URL=https://ncvvedhylfkevpbkorvd.supabase.co
       - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4OTI0MTAsImV4cCI6MjA4MzQ2ODQxMH0.kUwCvDeu442f8MzxFyb2CqbHm70zYZaAbDY3y2e3Yuc
       - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzg5MjQxMCwiZXhwIjoyMDgzNDY4NDEwfQ.8q3ZwLpzSt4302w-hA5oXl8-rLrvbX7QRxcfdshhpUk
