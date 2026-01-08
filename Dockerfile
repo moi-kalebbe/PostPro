@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     cargo \
     && rm -rf /var/lib/apt/lists/*
 
+# Prefer IPv4 over IPv6
+RUN echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf
+
 # Install python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
