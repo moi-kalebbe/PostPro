@@ -1,64 +1,169 @@
-version: '3.8'
+version: "3.7"
 
 services:
-  web:
-    image: postpro:latest
-    build: .
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    expose:
-      - 8000
-    env_file:
-      - .env
-    depends_on:
-      - redis
-    networks:
-      - postpro_network
 
-  worker:
-    image: postpro:latest
-    build: .
+## --------------------------- POSTPRO WEB --------------------------- ##
+
+  postpro_web:
+    image: ghcr.io/moi-kalebbe/postpro:latest
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
+
+    volumes:
+      - postpro_static:/app/staticfiles
+      - postpro_media:/app/media
+
+    networks:
+      - NuvemNet
+
+    environment:
+      ## 🔐 Django Settings
+      - SECRET_KEY=OcxtXaYAm_u6CSEtwRi4eWJPyhALnNYMC4obYywBwtPetrns_Zk8vQ
+      - DEBUG=False
+      - ALLOWED_HOSTS=postpro.nuvemchat.com,.nuvemchat.com
+
+      ## 🗄️ Supabase PostgreSQL
+      - DATABASE_URL=postgresql://postgres.ncvvedhylfkevpbkorvd:Kalebbe2025%23%24%25@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+      - SUPABASE_URL=https://ncvvedhylfkevpbkorvd.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4OTI0MTAsImV4cCI6MjA4MzQ2ODQxMH0.kUwCvDeu442f8MzxFyb2CqbHm70zYZaAbDY3y2e3Yuc
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzg5MjQxMCwiZXhwIjoyMDgzNDY4NDEwfQ.8q3ZwLpzSt4302w-hA5oXl8-rLrvbX7QRxcfdshhpUk
+
+      ## 🧑‍💻 Redis (interno)
+      - REDIS_URL=redis://postpro_redis:6379/0
+      - CELERY_BROKER_URL=redis://postpro_redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://postpro_redis:6379/0
+
+      ## 🔑 Encryption
+      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE
+
+      ## 🌍 Timezone
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=1
+        - traefik.http.routers.postpro.rule=Host(`postpro.nuvemchat.com`)
+        - traefik.http.routers.postpro.entrypoints=websecure
+        - traefik.http.routers.postpro.priority=1
+        - traefik.http.routers.postpro.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.postpro.service=postpro
+        - traefik.http.services.postpro.loadbalancer.server.port=8000
+        - traefik.http.services.postpro.loadbalancer.passHostHeader=true
+
+## --------------------------- POSTPRO WORKER (Celery) --------------------------- ##
+
+  postpro_worker:
+    image: ghcr.io/moi-kalebbe/postpro:latest
     command: celery -A config worker -l info --concurrency=2
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    env_file:
-      - .env
-    depends_on:
-      - redis
-    networks:
-      - postpro_network
 
-  beat:
-    image: postpro:latest
-    build: .
+    volumes:
+      - postpro_static:/app/staticfiles
+      - postpro_media:/app/media
+
+    networks:
+      - NuvemNet
+
+    environment:
+      - SECRET_KEY=OcxtXaYAm_u6CSEtwRi4eWJPyhALnNYMC4obYywBwtPetrns_Zk8vQ
+      - DEBUG=False
+      - DATABASE_URL=postgresql://postgres.ncvvedhylfkevpbkorvd:Kalebbe2025%23%24%25@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+      - SUPABASE_URL=https://ncvvedhylfkevpbkorvd.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4OTI0MTAsImV4cCI6MjA4MzQ2ODQxMH0.kUwCvDeu442f8MzxFyb2CqbHm70zYZaAbDY3y2e3Yuc
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdnZlZGh5bGZrZXZwYmtvcnZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzg5MjQxMCwiZXhwIjoyMDgzNDY4NDEwfQ.8q3ZwLpzSt4302w-hA5oXl8-rLrvbX7QRxcfdshhpUk
+      - REDIS_URL=redis://postpro_redis:6379/0
+      - CELERY_BROKER_URL=redis://postpro_redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://postpro_redis:6379/0
+      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+## --------------------------- POSTPRO BEAT (Scheduler) --------------------------- ##
+
+  postpro_beat:
+    image: ghcr.io/moi-kalebbe/postpro:latest
     command: celery -A config beat -l info
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    env_file:
-      - .env
-    depends_on:
-      - redis
-    networks:
-      - postpro_network
 
-  redis:
-    image: redis:7-alpine
-    expose:
-      - 6379
     volumes:
-      - redis_data:/data
+      - postpro_static:/app/staticfiles
+      - postpro_media:/app/media
+
     networks:
-      - postpro_network
+      - NuvemNet
+
+    environment:
+      - SECRET_KEY=OcxtXaYAm_u6CSEtwRi4eWJPyhALnNYMC4obYywBwtPetrns_Zk8vQ
+      - DEBUG=False
+      - DATABASE_URL=postgresql://postgres.ncvvedhylfkevpbkorvd:Kalebbe2025%23%24%25@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+      - REDIS_URL=redis://postpro_redis:6379/0
+      - CELERY_BROKER_URL=redis://postpro_redis:6379/0
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+## --------------------------- POSTPRO REDIS --------------------------- ##
+
+  postpro_redis:
+    image: redis:latest
+    command: ["redis-server", "--appendonly", "yes", "--port", "6379"]
+
+    volumes:
+      - postpro_redis:/data
+
+    networks:
+      - NuvemNet
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+## --------------------------- VOLUMES --------------------------- ##
 
 volumes:
-  static_volume:
-  media_volume:
-  redis_data:
+  postpro_static:
+    external: true
+    name: postpro_static
+  postpro_media:
+    external: true
+    name: postpro_media
+  postpro_redis:
+    external: true
+    name: postpro_redis
+
+## --------------------------- NETWORKS --------------------------- ##
 
 networks:
-  postpro_network:
-    driver: overlay
+  NuvemNet:
+    external: true
+    name: NuvemNet
