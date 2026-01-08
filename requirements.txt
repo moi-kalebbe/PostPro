@@ -1,0 +1,33 @@
+# PostPro - Requirements
+# Django Core
+Django==5.0.1
+psycopg2-binary==2.9.9
+django-environ==0.11.2
+
+# Async Tasks
+celery==5.3.4
+redis==5.0.1
+django-celery-beat==2.5.0
+django-celery-results==2.5.1
+
+# Supabase
+supabase==2.3.0
+
+# Security
+cryptography==41.0.7
+pydantic==2.5.3
+
+# Data Processing
+pandas==2.1.4
+openpyxl==3.1.2
+Pillow==10.1.0
+
+# HTTP
+requests==2.31.0
+
+# Payments
+stripe==7.8.0
+
+# Production
+gunicorn==21.2.0
+whitenoise==6.6.0

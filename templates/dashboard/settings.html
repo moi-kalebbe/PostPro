@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configurações - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Configurações</h1>
+    </div>
+
+    <div class="grid grid-cols-2">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">OpenRouter API Key</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_api_key">
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input type="password" name="openrouter_api_key" class="form-input" placeholder="{% if has_api_key %}••••••••••••••••{% else %}sk-or-v1-...{% endif %}">
+                        <span class="form-help">{% if has_api_key %}✓ API key configurada. Deixe em branco para manter.{% else %}Obtenha sua API key em <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a>{% endif %}</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                        <button type="submit" name="action" value="test_api_key" class="btn btn-secondary">Testar Conexão</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Modelos Padrão</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_models">
+                    <div class="form-group">
+                        <label class="form-label">Modelo de Texto</label>
+                        <select name="default_text_model" class="form-select">
+                            <option value="anthropic/claude-3.5-sonnet" {% if agency.default_text_model == 'anthropic/claude-3.5-sonnet' %}selected{% endif %}>Claude 3.5 Sonnet (Recomendado)</option>
+                            <option value="anthropic/claude-3-haiku" {% if agency.default_text_model == 'anthropic/claude-3-haiku' %}selected{% endif %}>Claude 3 Haiku (Econômico)</option>
+                            <option value="openai/gpt-4o" {% if agency.default_text_model == 'openai/gpt-4o' %}selected{% endif %}>GPT-4o</option>
+                            <option value="openai/gpt-4o-mini" {% if agency.default_text_model == 'openai/gpt-4o-mini' %}selected{% endif %}>GPT-4o Mini</option>
+                            <option value="google/gemini-pro-1.5" {% if agency.default_text_model == 'google/gemini-pro-1.5' %}selected{% endif %}>Gemini Pro 1.5</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modelo de Imagem</label>
+                        <select name="default_image_model" class="form-select">
+                            <option value="openai/gpt-4o-mini" {% if agency.default_image_model == 'openai/gpt-4o-mini' %}selected{% endif %}>GPT-4o Mini (Econômico)</option>
+                            <option value="openai/gpt-4o" {% if agency.default_image_model == 'openai/gpt-4o' %}selected{% endif %}>GPT-4o</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Seu Plano</h3>
+            </div>
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-lg font-semibold">{{ agency.get_plan_display }}</span>
+                    <span class="badge badge-{% if agency.subscription_status == 'active' %}success{% else %}warning{% endif %}">{{ agency.get_subscription_status_display }}</span>
+                </div>
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span>Posts este mês</span>
+                        <span>{{ agency.current_month_posts }} / {{ agency.monthly_posts_limit }}</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {% widthratio agency.current_month_posts agency.monthly_posts_limit 100 %}%"></div>
+                    </div>
+                </div>
+                <div class="text-sm text-muted">
+                    <p>Projetos: {{ agency.projects_count }} / {{ agency.max_projects }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Equipe</h3>
+                <button class="btn btn-secondary btn-sm" disabled>Convidar (Em breve)</button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr><th>Membro</th><th>Role</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for member in team_members %}
+                        <tr>
+                            <td><strong>{{ member.first_name }} {{ member.last_name }}</strong><div class="text-xs text-muted">{{ member.email }}</div></td>
+                            <td><span class="badge badge-gray">{{ member.get_role_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-muted">Nenhum membro</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

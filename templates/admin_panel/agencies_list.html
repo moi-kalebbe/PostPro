@@ -1,0 +1,170 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Agências - PostPro Admin{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar_admin.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Agências</h1>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-6">
+        <div class="card-body">
+            <form method="get" class="flex gap-4 items-end flex-wrap">
+                <div class="form-group mb-0" style="min-width: 150px;">
+                    <label class="form-label">Plano</label>
+                    <select name="plan" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="starter" {% if plan_filter == 'starter' %}selected{% endif %}>Starter</option>
+                        <option value="professional" {% if plan_filter == 'professional' %}selected{% endif %}>
+                            Professional</option>
+                        <option value="enterprise" {% if plan_filter == 'enterprise' %}selected{% endif %}>Enterprise
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group mb-0" style="min-width: 150px;">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Ativo</option>
+                        <option value="trial" {% if status_filter == 'trial' %}selected{% endif %}>Trial</option>
+                        <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspenso
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group mb-0 flex-1" style="min-width: 200px;">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="search" class="form-input" value="{{ search }}"
+                        placeholder="Nome ou slug..." data-search>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Agencies Table -->
+    <div class="card">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>AgÃªncia</th>
+                        <th>Plano</th>
+                        <th>Projetos</th>
+                        <th>Posts/MÃªs</th>
+                        <th>Status</th>
+                        <th>Criada em</th>
+                        <th>AÃ§Ãµes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agency in agencies %}
+                    <tr>
+                        <td>
+                            <strong>{{ agency.name }}</strong>
+                            <div class="text-xs text-muted">{{ agency.slug }}</div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge badge-{% if agency.plan == 'enterprise' %}primary{% elif agency.plan == 'professional' %}info{% else %}gray{% endif %}">
+                                {{ agency.get_plan_display }}
+                            </span>
+                        </td>
+                        <td>{{ agency.projects_count }} / {{ agency.max_projects }}</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <span>{{ agency.current_month_posts }} / {{ agency.monthly_posts_limit }}</span>
+                                <div class="progress" style="width: 60px;">
+                                    <div class="progress-bar"
+                                        style="width: {% widthratio agency.current_month_posts agency.monthly_posts_limit 100 %}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge badge-{% if agency.subscription_status == 'active' %}success{% elif agency.subscription_status == 'suspended' %}error{% else %}warning{% endif %}">
+                                {{ agency.get_subscription_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-muted">{{ agency.created_at|date:"d/m/Y" }}</td>
+                        <td>
+                            <div class="flex gap-1">
+                                <a href="{% url 'admin_panel:agency_detail' agency.id %}" class="btn btn-ghost btn-sm"
+                                    title="Detalhes">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
+
+                                {% if agency.subscription_status == 'active' %}
+                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}"
+                                    style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="suspend">
+                                    <button type="submit" class="btn btn-ghost btn-sm text-warning" title="Suspender"
+                                        onclick="return confirm('Suspender esta agÃªncia?')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="6" y="4" width="4" height="16"></rect>
+                                            <rect x="14" y="4" width="4" height="16"></rect>
+                                        </svg>
+                                    </button>
+                                </form>
+                                {% elif agency.subscription_status == 'suspended' %}
+                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}"
+                                    style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="activate">
+                                    <button type="submit" class="btn btn-ghost btn-sm text-success" title="Ativar">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                        </svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <h3 class="empty-state-title">Nenhuma agÃªncia encontrada</h3>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if agencies.has_other_pages %}
+        <div class="card-footer">
+            <div class="flex justify-center gap-2">
+                {% if agencies.has_previous %}
+                <a href="?page={{ agencies.previous_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}"
+                    class="btn btn-secondary btn-sm">Anterior</a>
+                {% endif %}
+                <span class="btn btn-ghost btn-sm">PÃ¡gina {{ agencies.number }} de {{ agencies.paginator.num_pages
+                    }}</span>
+                {% if agencies.has_next %}
+                <a href="?page={{ agencies.next_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}"
+                    class="btn btn-secondary btn-sm">PrÃ³xima</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

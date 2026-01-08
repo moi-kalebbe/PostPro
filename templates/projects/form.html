@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Editar{% else %}Novo{% endif %} Projeto - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">{% if is_edit %}Editar Projeto{% else %}Novo Projeto{% endif %}</h1>
+    </div>
+
+    <div class="card" style="max-width: 800px;">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-2" style="gap: 1.5rem;">
+                    <div>
+                        <h3 class="mb-4">Informações Básicas</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Nome do Projeto *</label>
+                            <input type="text" name="name" class="form-input" value="{{ form.name.value|default:'' }}" placeholder="Meu Blog" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">URL do WordPress *</label>
+                            <input type="url" name="wordpress_url" class="form-input" value="{{ form.wordpress_url.value|default:'' }}" placeholder="https://seusite.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Usuário WordPress</label>
+                            <input type="text" name="wordpress_username" class="form-input" value="{{ form.wordpress_username.value|default:'' }}" placeholder="admin">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Application Password</label>
+                            <input type="password" name="wordpress_password" class="form-input" placeholder="{% if is_edit %}Deixe vazio para manter{% else %}xxxx xxxx xxxx xxxx{% endif %}">
+                            <span class="form-help">Gere em: WordPress Admin → Users → Edit Profile → Application Passwords</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="mb-4">Configurações de Conteúdo</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Tom do Conteúdo</label>
+                            <select name="tone" class="form-select">
+                                {% for value, label in form.fields.tone.choices %}
+                                <option value="{{ value }}" {% if form.tone.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Estilo de Imagem</label>
+                            <select name="image_style" class="form-select">
+                                {% for value, label in form.fields.image_style.choices %}
+                                <option value="{{ value }}" {% if form.image_style.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Modelo de Texto (override)</label>
+                            <input type="text" name="text_model" class="form-input" value="{{ form.text_model.value|default:'' }}" placeholder="Deixe vazio para usar padrão da agência">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Modelo de Imagem (override)</label>
+                            <input type="text" name="image_model" class="form-input" value="{{ form.image_model.value|default:'' }}" placeholder="Deixe vazio para usar padrão da agência">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="is_active" class="form-checkbox" {% if form.is_active.value %}checked{% endif %}>
+                                <span>Projeto Ativo</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="btn btn-primary">{% if is_edit %}Salvar Alterações{% else %}Criar Projeto{% endif %}</button>
+                    <a href="{% if is_edit %}{% url 'projects:detail' project.id %}{% else %}{% url 'projects:list' %}{% endif %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if is_edit %}
+    <div class="card mt-6" style="max-width: 800px;">
+        <div class="card-header">
+            <h3 class="card-title">License Key</h3>
+        </div>
+        <div class="card-body">
+            <div class="flex items-center gap-4">
+                <code class="code-preview flex-1" style="word-break: break-all;">{{ project.license_key }}</code>
+                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('{{ project.license_key }}', this)">Copiar</button>
+            </div>
+            <p class="form-help mt-2">Use esta license key para configurar o plugin WordPress.</p>
+
+            <form method="post" action="{% url 'projects:regenerate_key' project.id %}" class="mt-4">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm text-error" onclick="return confirm('Regenerar a license key? O plugin precisará ser reconfigurado.')">Regenerar Key</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+<!-- Post Detail Fragment (loaded in modal) -->
+<div class="mb-4">
+    <div class="flex items-center gap-3 mb-2">
+        <span
+            class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% else %}info{% endif %}">
+            {{ post.get_status_display }}
+        </span>
+        <span class="text-sm text-muted">{{ post.created_at|date:"d/m/Y H:i" }}</span>
+    </div>
+
+    <h2 class="mb-1">{{ post.title|default:post.keyword }}</h2>
+    <p class="text-muted">{{ post.keyword }}</p>
+</div>
+
+{% if post.meta_description %}
+<div class="mb-4 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
+    <strong class="text-sm">Meta Description:</strong>
+    <p class="mb-0 text-sm">{{ post.meta_description }}</p>
+</div>
+{% endif %}
+
+{% if post.featured_image_url %}
+<div class="mb-4">
+    <img src="{{ post.featured_image_url }}" alt="{{ post.title }}"
+        style="max-width: 100%; border-radius: var(--radius-md);">
+</div>
+{% endif %}
+
+<!-- Content Preview -->
+<div class="mb-4">
+    <h4 class="mb-2">Conteúdo</h4>
+    <div class="post-preview">
+        {{ post.content|safe }}
+    </div>
+</div>
+
+<!-- Costs -->
+<div class="grid grid-cols-4 mb-4" style="gap: 1rem;">
+    <div class="stat-card">
+        <span class="stat-label">Texto</span>
+        <span class="stat-value text-sm">${{ post.text_generation_cost|floatformat:4 }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Imagem</span>
+        <span class="stat-value text-sm">${{ post.image_generation_cost|floatformat:4 }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Total</span>
+        <span class="stat-value text-sm text-primary">${{ post.total_cost|floatformat:4 }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Tokens</span>
+        <span class="stat-value text-sm">{{ post.tokens_total }}</span>
+    </div>
+</div>
+
+<!-- Artifacts -->
+<div class="mb-4">
+    <h4 class="mb-2">Pipeline Artifacts</h4>
+
+    {% for artifact in artifacts %}
+    <div class="artifact">
+        <div class="artifact-header" onclick="toggleArtifact(this)">
+            <span class="artifact-title">
+                <span
+                    class="badge badge-{% if artifact.step == 'research' %}info{% elif artifact.step == 'strategy' %}warning{% elif artifact.step == 'article' %}success{% else %}gray{% endif %}">
+                    {{ artifact.get_step_display }}
+                </span>
+                {{ artifact.model_used }}
+            </span>
+            <span class="artifact-meta">${{ artifact.cost|floatformat:4 }} • {{ artifact.tokens_used }} tokens</span>
+        </div>
+        <div class="artifact-body">
+            <pre style="white-space: pre-wrap; font-size: 0.8125rem;">{{ artifact.parsed_output|pprint }}</pre>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-muted">Nenhum artifact disponível</p>
+    {% endfor %}
+</div>
+
+<!-- Actions -->
+<div class="flex gap-2 flex-wrap">
+    <button class="btn btn-secondary btn-sm" onclick="regenerateStep('{{ post.id }}', 'research')">
+        Regenerar Pesquisa
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="regenerateStep('{{ post.id }}', 'strategy')">
+        Regenerar Estratégia
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="regenerateStep('{{ post.id }}', 'article')">
+        Regenerar Artigo
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="regenerateStep('{{ post.id }}', 'image')">
+        Regenerar Imagem
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="regenerateStep('{{ post.id }}', 'all')">
+        Regenerar Tudo
+    </button>
+</div>

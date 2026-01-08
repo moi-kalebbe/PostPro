@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <a href="{% url 'projects:create' %}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Novo Projeto
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Total de Projetos</span>
+                <span class="stat-value">{{ total_projects }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Posts Gerados</span>
+                <span class="stat-value">{{ total_posts }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Posts Publicados</span>
+                <span class="stat-value text-success">{{ published_posts }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Custo Total</span>
+                <span class="stat-value">${{ total_cost|floatformat:4 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2">
+        <!-- Posts Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Posts por Dia</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="postsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Costs Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Custos por Dia</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="costsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Posts -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">Posts Recentes</h3>
+            <a href="{% url 'automation:posts_list' %}" class="btn btn-ghost btn-sm">Ver todos</a>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Keyword</th>
+                        <th>Projeto</th>
+                        <th>Status</th>
+                        <th>Custo</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for post in recent_posts %}
+                    <tr>
+                        <td>
+                            <strong>{{ post.keyword|truncatewords:5 }}</strong>
+                        </td>
+                        <td>{{ post.project.name }}</td>
+                        <td>
+                            <span
+                                class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% else %}info{% endif %}">
+                                {{ post.get_status_display }}
+                            </span>
+                        </td>
+                        <td>${{ post.total_cost|floatformat:4 }}</td>
+                        <td class="text-muted">{{ post.created_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">
+                            Nenhum post gerado ainda
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Posts Chart
+        const postsData = {{ posts_chart_data| safe
+    }};
+    const postsCtx = document.getElementById('postsChart');
+
+    if (postsCtx && postsData.length) {
+        new Chart(postsCtx, {
+            type: 'line',
+            data: {
+                labels: postsData.map(d => d.date),
+                datasets: [{
+                    label: 'Posts',
+                    data: postsData.map(d => d.count),
+                    borderColor: '#FF6B2C',
+                    backgroundColor: 'rgba(255, 107, 44, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Costs Chart
+    const costsData = {{ costs_chart_data| safe }};
+    const costsCtx = document.getElementById('costsChart');
+
+    if (costsCtx && costsData.length) {
+        new Chart(costsCtx, {
+            type: 'bar',
+            data: {
+                labels: costsData.map(d => d.date),
+                datasets: [{
+                    label: 'Custo ($)',
+                    data: costsData.map(d => d.cost),
+                    backgroundColor: '#FF6B2C',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

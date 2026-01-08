@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar_admin.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Admin Dashboard</h1>
+    </div>
+
+    <!-- Platform Stats -->
+    <div class="stats-grid mb-6">
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Total Agências</span>
+                <span class="stat-value">{{ total_agencies }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Agências Ativas</span>
+                <span class="stat-value text-success">{{ active_agencies }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Total Projetos</span>
+                <span class="stat-value">{{ total_projects }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Posts Gerados</span>
+                <span class="stat-value">{{ total_posts }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2">
+        <!-- Growth Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Crescimento (30 dias)</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Posts por Dia</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="postsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Agencies -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">Agências Recentes</h3>
+            <a href="{% url 'admin_panel:agencies_list' %}" class="btn btn-ghost btn-sm">Ver todas</a>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Agência</th>
+                        <th>Plano</th>
+                        <th>Projetos</th>
+                        <th>Posts/Mês</th>
+                        <th>Status</th>
+                        <th>Criada em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agency in recent_agencies %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'admin_panel:agency_detail' agency.id %}">
+                                <strong>{{ agency.name }}</strong>
+                            </a>
+                        </td>
+                        <td>
+                            <span
+                                class="badge badge-{% if agency.plan == 'enterprise' %}primary{% elif agency.plan == 'professional' %}info{% else %}gray{% endif %}">
+                                {{ agency.get_plan_display }}
+                            </span>
+                        </td>
+                        <td>{{ agency.projects_count }}</td>
+                        <td>{{ agency.current_month_posts }} / {{ agency.monthly_posts_limit }}</td>
+                        <td>
+                            <span
+                                class="badge badge-{% if agency.subscription_status == 'active' %}success{% else %}warning{% endif %}">
+                                {{ agency.get_subscription_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-muted">{{ agency.created_at|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted p-6">Nenhuma agência</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Activity Logs -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">Atividades Recentes</h3>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ação</th>
+                        <th>Usuário</th>
+                        <th>Agência</th>
+                        <th>Entidade</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_activity %}
+                    <tr>
+                        <td><strong>{{ log.action }}</strong></td>
+                        <td>{{ log.actor_user.email|default:'-' }}</td>
+                        <td>{{ log.agency.name|default:'-' }}</td>
+                        <td>{{ log.entity_type }}</td>
+                        <td class="text-muted">{{ log.created_at|date:"d/m H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">Nenhuma atividade</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const growthData = {{ growth_chart_data| safe
+    }};
+    const postsData = {{ posts_chart_data| safe }};
+
+    if (document.getElementById('growthChart') && growthData.length) {
+        new Chart(document.getElementById('growthChart'), {
+            type: 'line',
+            data: {
+                labels: growthData.map(d => d.date),
+                datasets: [{
+                    label: 'Agências',
+                    data: growthData.map(d => d.agencies),
+                    borderColor: '#FF6B2C',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    if (document.getElementById('postsChart') && postsData.length) {
+        new Chart(document.getElementById('postsChart'), {
+            type: 'bar',
+            data: {
+                labels: postsData.map(d => d.date),
+                datasets: [{
+                    label: 'Posts',
+                    data: postsData.map(d => d.count),
+                    backgroundColor: '#FF6B2C',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Uso & Custos - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Uso & Custos</h1>
+        <div class="flex gap-2">
+            <select id="period-select" class="form-select" style="width: auto;" onchange="changePeriod(this.value)">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="stats-grid mb-6">
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Posts Gerados</span>
+                <span class="stat-value">{{ total_posts }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Custo Total</span>
+                <span class="stat-value text-primary">${{ total_cost|floatformat:4 }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Custo Médio/Post</span>
+                <span class="stat-value">${{ avg_cost|floatformat:4 }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Tokens Usados</span>
+                <span class="stat-value">{{ total_tokens|floatformat:0 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2">
+        <!-- Cost Breakdown Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Custo por Dia</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="costsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost by Type -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Custo por Tipo</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost by Project -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">Custo por Projeto</h3>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Posts</th>
+                        <th>Custo Texto</th>
+                        <th>Custo Imagem</th>
+                        <th>Total</th>
+                        <th>Tokens</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in costs_by_project %}
+                    <tr>
+                        <td><strong>{{ item.project_name }}</strong></td>
+                        <td>{{ item.posts_count }}</td>
+                        <td>${{ item.text_cost|floatformat:4 }}</td>
+                        <td>${{ item.image_cost|floatformat:4 }}</td>
+                        <td class="text-primary font-semibold">${{ item.total_cost|floatformat:4 }}</td>
+                        <td>{{ item.tokens }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted p-6">
+                            Nenhum dado disponível
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Daily Breakdown -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">Detalhamento Diário</h3>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Posts</th>
+                        <th>Custo Texto</th>
+                        <th>Custo Imagem</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in daily_breakdown %}
+                    <tr>
+                        <td>{{ item.date|date:"d/m/Y" }}</td>
+                        <td>{{ item.posts }}</td>
+                        <td>${{ item.text_cost|floatformat:4 }}</td>
+                        <td>${{ item.image_cost|floatformat:4 }}</td>
+                        <td class="font-semibold">${{ item.total|floatformat:4 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">
+                            Nenhum dado disponível
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Costs by day
+        const dailyData = {{ daily_chart_data| safe
+    }};
+    const costsCtx = document.getElementById('costsChart');
+
+    if (costsCtx && dailyData.length) {
+        new Chart(costsCtx, {
+            type: 'line',
+            data: {
+                labels: dailyData.map(d => d.date),
+                datasets: [{
+                    label: 'Custo ($)',
+                    data: dailyData.map(d => d.cost),
+                    borderColor: '#FF6B2C',
+                    backgroundColor: 'rgba(255, 107, 44, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Cost by type (text vs image)
+    const typeData = {{ type_chart_data| safe }};
+    const typeCtx = document.getElementById('typeChart');
+
+    if (typeCtx) {
+        new Chart(typeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Texto', 'Imagem'],
+                datasets: [{
+                    data: [typeData.text, typeData.image],
+                    backgroundColor: ['#FF6B2C', '#3B82F6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+});
+
+    function changePeriod(days) {
+        window.location.href = `?days=${days}`;
+    }
+</script>
+{% endblock %}

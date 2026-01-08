@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Batches - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Jobs</h1>
+    </div>
+
+    <div class="card">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Arquivo</th>
+                        <th>Status</th>
+                        <th>Progresso</th>
+                        <th>Custo Est.</th>
+                        <th>Tipo</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in batches %}
+                    <tr>
+                        <td><strong>{{ batch.project.name }}</strong></td>
+                        <td>
+                            <span class="text-sm">{{ batch.original_filename }}</span>
+                        </td>
+                        <td>
+                            <span
+                                class="badge badge-{% if batch.status == 'completed' %}success{% elif batch.status == 'processing' %}info{% elif batch.status == 'failed' %}error{% else %}gray{% endif %}">
+                                {{ batch.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if batch.status == 'processing' %}
+                            <div class="flex items-center gap-2">
+                                <div class="progress" style="width: 80px;">
+                                    <div class="progress-bar" style="width: {{ batch.progress_percent }}%"></div>
+                                </div>
+                                <span class="text-xs">{{ batch.progress_percent }}%</span>
+                            </div>
+                            {% else %}
+                            {{ batch.processed_rows }} / {{ batch.total_rows }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if batch.estimated_cost %}
+                            ${{ batch.estimated_cost|floatformat:4 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if batch.is_dry_run %}
+                            <span class="badge badge-warning">Simulação</span>
+                            {% else %}
+                            <span class="badge badge-gray">Real</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ batch.created_at|date:"d/m H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <h3 class="empty-state-title">Nenhum job encontrado</h3>
+                                <p class="empty-state-text">Faça upload de um CSV em um projeto.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if batches.has_other_pages %}
+        <div class="card-footer">
+            <div class="flex justify-center gap-2">
+                {% if batches.has_previous %}
+                <a href="?page={{ batches.previous_page_number }}" class="btn btn-secondary btn-sm">Anterior</a>
+                {% endif %}
+                <span class="btn btn-ghost btn-sm">Página {{ batches.number }} de {{ batches.paginator.num_pages
+                    }}</span>
+                {% if batches.has_next %}
+                <a href="?page={{ batches.next_page_number }}" class="btn btn-secondary btn-sm">Próxima</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
