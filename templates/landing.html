@@ -1,0 +1,457 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostPro - Automação Editorial Intelligent</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="nav-logo">
+                <span class="gradient-text">PostPro</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="#funcionalidades">Funcionalidades</a>
+                <a href="#como-funciona">Como Funciona</a>
+                <a href="#faq">FAQ</a>
+                <a href="{% url 'accounts:login' %}" class="btn btn-secondary"
+                    style="padding: 8px 20px; font-size: 14px;">Entrar</a>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Alternar Tema">
+                    <!-- Sun Icon -->
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" style="display: none;">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon Icon -->
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-bg"></div>
+            <div class="container">
+                <div class="hero-grid">
+                    <div class="hero-content animate-in">
+                        <div class="hero-badge">🚀 Automação de Conteúdo com IA</div>
+                        <h1 class="hero-title">
+                            Seu Blog no <br>
+                            <span class="gradient-text">Piloto Automático</span>
+                        </h1>
+                        <p class="hero-subtitle">
+                            Gere, agende e publique artigos de alta conversão sem escrever uma única palavra. O único
+                            sistema conectado diretamente ao seu WordPress.
+                        </p>
+
+                        <div class="hero-list">
+                            <div class="hero-list-item">
+                                <div class="check-icon">✓</div>
+                                <span>Conteúdo 100% otimizado para SEO</span>
+                            </div>
+                            <div class="hero-list-item">
+                                <div class="check-icon">✓</div>
+                                <span>Integração nativa com WordPress</span>
+                            </div>
+                            <div class="hero-list-item">
+                                <div class="check-icon">✓</div>
+                                <span>Design editorial premium e responsivo</span>
+                            </div>
+                        </div>
+
+                        <div class="hero-actions">
+                            <a href="{% url 'accounts:register' %}" class="btn btn-primary pulse-animation">Começar
+                                Gratuitamente</a>
+                            <a href="#como-funciona" class="btn btn-secondary">Ver Demonstração</a>
+                        </div>
+                    </div>
+
+                    <div class="hero-login animate-in" style="animation-delay: 0.2s;">
+                        <form class="glass-card login-box" action="{% url 'accounts:login' %}" method="POST">
+                            {% csrf_token %}
+                            <h3 class="login-title">Acesse o Painel</h3>
+
+                            <div class="input-group">
+                                <input type="email" name="email" placeholder="Seu e-mail profissional"
+                                    class="input-field" required>
+                            </div>
+
+                            <div class="input-group">
+                                <input type="password" name="password" placeholder="Sua senha" class="input-field"
+                                    required>
+                            </div>
+
+                            <div class="login-actions">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar Agora</button>
+                                <a href="{% url 'accounts:register' %}" class="btn btn-secondary"
+                                    style="width: 100%; justify-content: center;">Criar Conta</a>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 16px;">
+                                <a href="#" style="font-size: 13px; opacity: 0.6;">Esqueceu a senha?</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section class="features" id="funcionalidades">
+            <div class="container">
+                <div class="features-grid">
+                    <!-- Feature 1 -->
+                    <div class="glass-card feature-card animate-in">
+                        <div class="feature-icon-wrapper"
+                            style="background: linear-gradient(135deg, #FF6B2C, #FFB347);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <h3 class="feature-title">Geração Instantânea</h3>
+                        <p class="feature-desc">Crie um calendário editorial completo de 30 dias em menso de 2 minutos
+                            com nossa IA avançada.</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="glass-card feature-card animate-in" style="animation-delay: 0.1s;">
+                        <div class="feature-icon-wrapper"
+                            style="background: linear-gradient(135deg, #10b981, #34d399);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="6"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                            </svg>
+                        </div>
+                        <h3 class="feature-title">SEO de Precisão</h3>
+                        <p class="feature-desc">Conteúdos projetados para rankear. Analisamos keyword density, headers e
+                            legibilidade automaticamente.</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="glass-card feature-card animate-in" style="animation-delay: 0.2s;">
+                        <div class="feature-icon-wrapper"
+                            style="background: linear-gradient(135deg, #3b82f6, #60a5fa);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                        </div>
+                        <h3 class="feature-title">Gestão Centralizada</h3>
+                        <p class="feature-desc">Gerencie múltiplos sites e blogs em um único dashboard intuitivo e
+                            profissional.</p>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="glass-card feature-card animate-in" style="animation-delay: 0.3s;">
+                        <div class="feature-icon-wrapper"
+                            style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="feature-title">Conteúdo Humano</h3>
+                        <p class="feature-desc">Tecnologia anti-detecção que garante textos naturais, envolventes e
+                            livres de plágio.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it Works -->
+        <section class="how-it-works" id="como-funciona">
+            <div class="container">
+                <div class="section-header animate-in">
+                    <h2 class="section-title">Como Funciona</h2>
+                    <p class="section-subtitle">Três passos simples para transformar sua estratégia de conteúdo.</p>
+                </div>
+
+                <div class="timeline">
+                    <!-- Step 1 -->
+                    <div class="step-card animate-in">
+                        <div class="step-number">1</div>
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="#FF6B2C" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                </path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                        </div>
+                        <h3>Conecte seu WordPress</h3>
+                        <p style="color: var(--text-secondary); margin-top: 8px;">Instale nosso plugin oficial e
+                            sincronize suas categorias e autores em segundos.</p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="step-card animate-in" style="animation-delay: 0.2s;">
+                        <div class="step-number">2</div>
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="#FF6B2C" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            </svg>
+                        </div>
+                        <h3>Defina os Tópicos</h3>
+                        <p style="color: var(--text-secondary); margin-top: 8px;">Insira suas palavras-chave e deixe
+                            nossa IA gerar sugestões de pauta baseadas em tendências.</p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="step-card animate-in" style="animation-delay: 0.4s;">
+                        <div class="step-number">3</div>
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="#FF6B2C" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <h3>Aprove e Publique</h3>
+                        <p style="color: var(--text-secondary); margin-top: 8px;">Revise o plano editorial e aprove. O
+                            PostPro escreve, formata e publica automaticamente.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mockup Section 1: Dashboard -->
+        <section class="product-showcase">
+            <div class="container">
+                <div class="showcase-grid">
+                    <div class="showcase-text animate-in">
+                        <div class="hero-badge" style="margin-bottom: 16px;">Plano Editorial Inteligente</div>
+                        <h2 class="section-title">Planejamento Visual e Intuitivo</h2>
+                        <p class="section-subtitle">
+                            Abandone as planilhas. Visualize toda a sua estratégia de conteúdo em um dashboard moderno
+                            projetado para produtividade máxima.
+                        </p>
+
+                        <div class="feature-list-check">
+                            <div class="feature-list-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Status de produção em tempo real
+                            </div>
+                            <div class="feature-list-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Insights de tendências integrados
+                            </div>
+                            <div class="feature-list-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Edição rápida one-click
+                            </div>
+                        </div>
+                    </div>
+                    <div class="showcase-mockup animate-in" style="animation-delay: 0.2s;">
+                        <img class="theme-img" src="{% static 'mockups/mockup-dashboard-dark.png' %}"
+                            data-dark-src="{% static 'mockups/mockup-dashboard-dark.png' %}"
+                            data-light-src="{% static 'mockups/mockup-dashboard-light.png' %}"
+                            alt="PostPro Dashboard Editorial">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mockup Section 2: Plugin -->
+        <section class="product-showcase">
+            <div class="container">
+                <div class="showcase-grid reverse">
+                    <div class="showcase-mockup animate-in">
+                        <img class="theme-img" src="{% static 'mockups/mockup-plugin-dark.png' %}"
+                            data-dark-src="{% static 'mockups/mockup-plugin-dark.png' %}"
+                            data-light-src="{% static 'mockups/mockup-plugin-light.png' %}"
+                            alt="PostPro WordPress Plugin">
+                    </div>
+                    <div class="showcase-text animate-in" style="animation-delay: 0.2s;">
+                        <h2 class="section-title">Não saia do WordPress</h2>
+                        <p class="section-subtitle">
+                            Nosso plugin nativo permite que você gere pautas e configurações diretamente do seu painel
+                            administrativo favorito.
+                        </p>
+
+                        <div class="feature-list-check">
+                            <div class="feature-list-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Sincronização de categorias e tags
+                            </div>
+                            <div class="feature-list-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Validação de conexão automática
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mockup Section 3: Calendar -->
+        <section class="product-showcase">
+            <div class="container" style="text-align: center;">
+                <h2 class="section-title animate-in" style="margin-bottom: 40px;">Cronograma Visual</h2>
+                <div class="showcase-mockup animate-in">
+                    <img class="theme-img" src="{% static 'mockups/mockup-calendar-dark.png' %}"
+                        data-dark-src="{% static 'mockups/mockup-calendar-dark.png' %}"
+                        data-light-src="{% static 'mockups/mockup-calendar-light.png' %}" alt="PostPro Calendar"
+                        style="width: 100%;">
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="faq" id="faq">
+            <div class="container">
+                <div class="section-header animate-in">
+                    <h2 class="section-title">Perguntas Frequentes</h2>
+                </div>
+
+                <div class="accordion">
+                    <div class="accordion-item animate-in">
+                        <div class="accordion-header">
+                            Como funciona a integração com WordPress?
+                            <svg class="icon-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="accordion-content">
+                            <p>É muito simples. Você instala nosso plugin oficial, conecta com uma chave de API única e
+                                pronto. O PostPro consegue ler suas categorias para sugerir pautas e publicar
+                                diretamente nos rascunhos ou posts publicados.</p>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item animate-in">
+                        <div class="accordion-header">
+                            O conteúdo é original e único?
+                            <svg class="icon-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Sim! Utilizamos múltiplos modelos de LLM treinados para evitar duplicidade e garantir
+                                originalidade. Além disso, nosso sistema verifica plágio antes de entregar qualquer
+                                artigo.</p>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item animate-in">
+                        <div class="accordion-header">
+                            Posso editar os artigos antes de publicar?
+                            <svg class="icon-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Com certeza. O fluxo sugerido é: Gerar Plano > Aprovar Títulos > Gerar Artigos > Revisar
+                                > Publicar. Você tem controle total em cada etapa.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Final -->
+        <section class="cta-section animate-in">
+            <div class="container">
+                <div class="cta-box">
+                    <h2 class="cta-title">Pronto para escalar seu tráfego?</h2>
+                    <p class="cta-subtitle">Junte-se a centenas de empresas que já automatizaram seu marketing de
+                        conteúdo com PostPro.</p>
+                    <div class="hero-actions" style="justify-content: center;">
+                        <a href="{% url 'accounts:register' %}" class="btn btn-primary pulse-animation"
+                            style="padding: 16px 40px; font-size: 18px;">Começar Agora</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="nav-logo">
+                <span style="font-weight: 700;">PostPro</span>
+            </div>
+            <div class="footer-copy">
+                &copy; 2026 PostPro. Todos os direitos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS -->
+    <script src="{% static 'js/landing.js' %}"></script>
+</body>
+
+</html>

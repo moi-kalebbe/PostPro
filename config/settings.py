@@ -151,6 +151,8 @@ LOGOUT_REDIRECT_URL = '/auth/login/'
 # Session
 SESSION_COOKIE_AGE = 86400 * 7  # 7 days
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_NAME = 'postpro_sessionid'
+CSRF_COOKIE_NAME = 'postpro_csrftoken'
 
 # CSRF Trusted Origins (for development/production)
 CSRF_TRUSTED_ORIGINS = [

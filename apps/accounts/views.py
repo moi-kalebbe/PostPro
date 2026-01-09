@@ -39,7 +39,10 @@ def login_view(request):
             else:
                 messages.error(request, 'Email ou senha inválidos.')
     else:
-        form = LoginForm()
+        initial_data = {}
+        if request.GET.get('email'):
+            initial_data['email'] = request.GET.get('email')
+        form = LoginForm(initial=initial_data)
     
     return render(request, 'auth/login.html', {'form': form})
 
@@ -57,7 +60,10 @@ def register_view(request):
             messages.success(request, 'Conta criada com sucesso!')
             return redirect('dashboard:index')
     else:
-        form = RegisterForm()
+        initial_data = {}
+        if request.GET.get('email'):
+            initial_data['email'] = request.GET.get('email')
+        form = RegisterForm(initial=initial_data)
     
     return render(request, 'auth/register.html', {'form': form})
 
@@ -67,13 +73,13 @@ def logout_view(request):
     """User logout view."""
     logout(request)
     messages.info(request, 'Você saiu da sua conta.')
-    return redirect('accounts:login')
+    return redirect('home')
 
 
 def home_view(request):
-    """Home page redirect."""
+    """Home page served at root."""
     if request.user.is_authenticated:
         if request.user.is_super_admin:
             return redirect('admin_panel:dashboard')
         return redirect('dashboard:index')
-    return redirect('accounts:login')
+    return render(request, 'landing.html')
