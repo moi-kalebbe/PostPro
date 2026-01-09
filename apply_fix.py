@@ -1,12 +1,11 @@
 import os
-import time
 
 target_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\posts_list.html'
-temp_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\posts_list_fixed.html'
+temp_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\posts_list_fixed_v2.html'
 
 content = """{% extends 'base.html' %}
 {% load static %}
-{# Syntax Fix applied: 2026-01-09 (Scripted) #}
+{# Syntax Fix applied: 2026-01-09 (Scripted v2 - Single line tags) #}
 
 {% block title %}Posts - PostPro{% endblock %}
 
@@ -96,9 +95,7 @@ content = """{% extends 'base.html' %}
                         <td><strong>{{ post.keyword|truncatewords:5 }}</strong></td>
                         <td>{{ post.title|truncatewords:8|default:'-' }}</td>
                         <td>{{ post.project.name }}</td>
-                        <td><span
-                                class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% elif post.status == 'generating' %}info{% else %}gray{% endif %}">{{
-                                post.get_status_display }}</span></td>
+                        <td><span class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% elif post.status == 'generating' %}info{% else %}gray{% endif %}">{{ post.get_status_display }}</span></td>
                         <td>${{ post.total_cost|floatformat:4 }}</td>
                         <td class="text-muted">{{ post.created_at|date:"d/m H:i" }}</td>
                         <td>
@@ -141,7 +138,7 @@ content = """{% extends 'base.html' %}
                                         fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path
-                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
                                         </path>
                                     </svg>
                                 </button>
