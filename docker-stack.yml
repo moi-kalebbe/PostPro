@@ -33,7 +33,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://postpro_redis:6379/0
 
       ## 🔑 Encryption
-      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE
+      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE=
 
       ## 🌍 Timezone
       - TZ=America/Sao_Paulo
@@ -87,6 +87,7 @@ services:
     command: celery -A config worker -l info --concurrency=2
 
     volumes:
+      - .:/app
       - postpro_static:/app/staticfiles
       - postpro_media:/app/media
 

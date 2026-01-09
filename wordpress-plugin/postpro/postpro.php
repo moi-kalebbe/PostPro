@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('POSTPRO_VERSION', '1.0.0');
+define('POSTPRO_VERSION', '1.0.1');
 define('POSTPRO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POSTPRO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POSTPRO_API_BASE', 'https://postpro.nuvemchat.com/api/v1');
@@ -124,6 +124,8 @@ class PostPro_Plugin {
         ?>
         <div class="wrap postpro-wrap">
             <h1>PostPro - Configurações</h1>
+            
+            <?php settings_errors(); ?>
             
             <div class="postpro-card">
                 <h2>Licença</h2>
