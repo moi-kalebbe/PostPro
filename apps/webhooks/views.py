@@ -381,18 +381,64 @@ def debug_batch_jobs(request):
 def sync_site_profile_view(request):
     """
     Trigger site profile synchronization.
+    Accepts pushed data from plugin or triggers background sync.
     
     POST /api/v1/project/sync-profile
     Headers: X-License-Key
+    Body (optional): {site_title, categories, tags, ...}
     """
     project = request.project
     
-    # Trigger task
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+        
+    # If data is provided, update synchronously (Push mode)
+    if data and (data.get('categories') or data.get('site_title')):
+        from apps.automation.models import SiteProfile
+        from django.utils import timezone
+        
+        profile, created = SiteProfile.objects.get_or_create(
+            project=project,
+            defaults={
+                'site_name': project.name,
+                'home_url': project.wordpress_url,
+            }
+        )
+        
+        # Update fields
+        if data.get('site_title'):
+            profile.site_name = data['site_title']
+        if data.get('site_description'):
+            profile.site_description = data['site_description']
+        if data.get('site_url'):
+            profile.home_url = data['site_url']
+        if data.get('language'):
+            profile.language = data['language']
+            
+        if 'categories' in data:
+            profile.categories = data['categories']
+        if 'tags' in data:
+            profile.tags = data['tags']
+        if 'recent_posts' in data:
+            profile.recent_posts = data['recent_posts']
+            
+        profile.last_synced_at = timezone.now()
+        profile.save()
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Profile synced successfully (pushed)",
+            "profile_id": str(profile.id)
+        })
+    
+    # Fallback: Trigger background task (Pull mode)
     sync_site_profile.delay(str(project.id))
     
     return JsonResponse({
         "success": True,
-        "message": "Synchronization started"
+        "message": "Synchronization started (background)"
     })
 
 
@@ -487,20 +533,32 @@ def save_keywords_view(request):
         from apps.automation.models import EditorialPlan
         from datetime import date, timedelta
         
-        # Create or update pending plan with keywords
-        plan, created = EditorialPlan.objects.update_or_create(
+        # Check active/generating plans first
+        plan = EditorialPlan.objects.filter(
             project=project,
-            status__in=[EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.GENERATING],
-            defaults={
-                'keywords': keywords,
-                'start_date': date.today() + timedelta(days=1),
-                'status': EditorialPlan.Status.PENDING_APPROVAL,
-            }
-        )
+            status__in=[EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.GENERATING]
+        ).first()
+
+        if plan:
+            plan.keywords = keywords
+            plan.start_date = date.today() + timedelta(days=1)
+            plan.status = EditorialPlan.Status.GENERATING
+            plan.save()
+        else:
+            plan = EditorialPlan.objects.create(
+                project=project,
+                keywords=keywords,
+                start_date=date.today() + timedelta(days=1),
+                status=EditorialPlan.Status.GENERATING
+            )
+            
+        # Trigger generation task logic
+        from apps.automation.tasks import generate_editorial_plan
+        generate_editorial_plan.delay(str(plan.id))
         
         return JsonResponse({
             "success": True,
-            "message": "Keywords saved successfully",
+            "message": "Keywords saved and plan generation started",
             "plan_id": str(plan.id),
             "keywords_count": len(keywords)
         })
