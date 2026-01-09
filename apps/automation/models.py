@@ -482,6 +482,7 @@ class EditorialPlan(models.Model):
         ACTIVE = 'active', 'Active'
         COMPLETED = 'completed', 'Completed'
         REJECTED = 'rejected', 'Rejected'
+        FAILED = 'failed', 'Failed'
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(

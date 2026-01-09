@@ -539,7 +539,7 @@ def generate_editorial_plan(self, plan_id: str):
         
     except Exception as e:
         logger.error(f"Error generating editorial plan {plan_id}: {e}")
-        plan.status = EditorialPlan.Status.REJECTED
+        plan.status = EditorialPlan.Status.FAILED
         plan.save()
         raise
 
