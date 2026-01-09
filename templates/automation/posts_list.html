@@ -31,24 +31,45 @@
                     <select name="status" class="form-select" onchange="this.form.submit()">
                         <option value="">Todos</option>
                         {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="form-group mb-0 flex-1" style="min-width: 200px;">
                     <label class="form-label">Buscar</label>
-                    <input type="text" name="search" class="form-input" value="{{ search }}" placeholder="Keyword ou título..." data-search>
+                    <input type="text" name="search" class="form-input" value="{{ search }}"
+                        placeholder="Keyword ou título..." data-search>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="card">
+        <div class="card-header bulk-actions-bar" id="bulk-actions-bar" style="display: none;">
+            <div class="flex items-center gap-4">
+                <span class="text-sm"><span id="selected-count">0</span> post(s) selecionado(s)</span>
+                <button type="button" class="btn btn-error btn-sm" onclick="bulkDeletePosts()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Deletar selecionados
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="clearSelection()">
+                    Limpar seleção
+                </button>
+            </div>
+        </div>
         <div class="table-container">
             <table class="table">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)">
+                        </th>
                         <th>Keyword</th>
                         <th>Título</th>
                         <th>Projeto</th>
@@ -60,28 +81,63 @@
                 </thead>
                 <tbody>
                     {% for post in posts %}
-                    <tr>
+                    <tr data-post-id="{{ post.id }}">
+                        <td>
+                            <input type="checkbox" class="post-checkbox" value="{{ post.id }}"
+                                onchange="updateBulkBar()">
+                        </td>
                         <td><strong>{{ post.keyword|truncatewords:5 }}</strong></td>
                         <td>{{ post.title|truncatewords:8|default:'-' }}</td>
                         <td>{{ post.project.name }}</td>
-                        <td><span class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% elif post.status == 'generating' %}info{% else %}gray{% endif %}">{{ post.get_status_display }}</span></td>
+                        <td><span
+                                class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% elif post.status == 'generating' %}info{% else %}gray{% endif %}">{{
+                                post.get_status_display }}</span></td>
                         <td>${{ post.total_cost|floatformat:4 }}</td>
                         <td class="text-muted">{{ post.created_at|date:"d/m H:i" }}</td>
                         <td>
                             <div class="flex gap-1">
-                                <button class="btn btn-ghost btn-sm" onclick="openPostModal('{{ post.id }}')" title="Preview">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <button class="btn btn-ghost btn-sm" onclick="openPostModal('{{ post.id }}')"
+                                    title="Preview">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
                                 </button>
                                 {% if post.status == 'pending_review' or post.status == 'approved' %}
-                                <button class="btn btn-ghost btn-sm" onclick="publishPost('{{ post.id }}')" title="Publicar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                                <button class="btn btn-ghost btn-sm" onclick="publishPost('{{ post.id }}')"
+                                    title="Publicar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="17 1 21 5 17 9"></polyline>
+                                        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                        <polyline points="7 23 3 19 7 15"></polyline>
+                                        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                                    </svg>
                                 </button>
                                 {% endif %}
                                 {% if post.wordpress_edit_url %}
-                                <a href="{{ post.wordpress_edit_url }}" target="_blank" class="btn btn-ghost btn-sm" title="Editar no WP">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                <a href="{{ post.wordpress_edit_url }}" target="_blank" class="btn btn-ghost btn-sm"
+                                    title="Editar no WP">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
                                 </a>
                                 {% endif %}
+                                <button class="btn btn-ghost btn-sm text-error"
+                                    onclick="openDeleteModal('{{ post.id }}', '{{ post.keyword|truncatewords:3 }}', {{ post.wordpress_post_id|default:'null' }})"
+                                    title="Deletar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -89,7 +145,11 @@
                     <tr>
                         <td colspan="7">
                             <div class="empty-state">
-                                <svg class="empty-state-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                <svg class="empty-state-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
                                 <h3 class="empty-state-title">Nenhum post encontrado</h3>
                                 <p class="empty-state-text">Faça upload de um CSV para gerar posts.</p>
                             </div>
@@ -104,11 +164,13 @@
         <div class="card-footer">
             <div class="flex justify-center gap-2">
                 {% if posts.has_previous %}
-                <a href="?page={{ posts.previous_page_number }}&project={{ project_filter }}&status={{ status_filter }}&search={{ search }}" class="btn btn-secondary btn-sm">Anterior</a>
+                <a href="?page={{ posts.previous_page_number }}&project={{ project_filter }}&status={{ status_filter }}&search={{ search }}"
+                    class="btn btn-secondary btn-sm">Anterior</a>
                 {% endif %}
                 <span class="btn btn-ghost btn-sm">Página {{ posts.number }} de {{ posts.paginator.num_pages }}</span>
                 {% if posts.has_next %}
-                <a href="?page={{ posts.next_page_number }}&project={{ project_filter }}&status={{ status_filter }}&search={{ search }}" class="btn btn-secondary btn-sm">Próxima</a>
+                <a href="?page={{ posts.next_page_number }}&project={{ project_filter }}&status={{ status_filter }}&search={{ search }}"
+                    class="btn btn-secondary btn-sm">Próxima</a>
                 {% endif %}
             </div>
         </div>
@@ -121,7 +183,11 @@
         <div class="modal-header">
             <h3 class="modal-title" id="modal-title">Preview do Post</h3>
             <button class="modal-close" onclick="closeModal('post-modal')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
         <div class="modal-body" id="modal-body">
@@ -158,7 +224,7 @@
             const data = await response.json();
             if (data.success) {
                 showToast('Publicando...', 'info');
-                setTimeout(function() { location.reload(); }, 2000);
+                setTimeout(function () { location.reload(); }, 2000);
             } else {
                 showToast(data.message || 'Erro', 'error');
             }
@@ -181,11 +247,218 @@
             const data = await response.json();
             showToast(data.message, data.success ? 'info' : 'error');
             if (data.success) {
-                setTimeout(function() { openPostModal(postId); }, 2000);
+                setTimeout(function () { openPostModal(postId); }, 2000);
+            }
+        } catch (error) {
+            showToast('Erro: ' + error.message, 'error');
+        }
+    }
+
+    // ========== DELETE FUNCTIONALITY ==========
+
+    let deletePostId = null;
+    let deleteHasWordPress = false;
+
+    function openDeleteModal(postId, keyword, wpPostId) {
+        deletePostId = postId;
+        deleteHasWordPress = wpPostId !== null && wpPostId !== 'null';
+
+        document.getElementById('delete-post-keyword').textContent = keyword;
+
+        const wpOption = document.getElementById('delete-wp-option');
+        if (deleteHasWordPress) {
+            wpOption.style.display = 'block';
+        } else {
+            wpOption.style.display = 'none';
+            document.getElementById('delete-from-wp').checked = false;
+        }
+
+        openModal('delete-modal');
+    }
+
+    async function confirmDeletePost() {
+        if (!deletePostId) return;
+
+        const deleteFromWp = document.getElementById('delete-from-wp').checked;
+
+        try {
+            const response = await fetch('/automation/posts/' + deletePostId + '/delete/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ delete_from_wordpress: deleteFromWp }),
+            });
+            const data = await response.json();
+
+            closeModal('delete-modal');
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                // Remove row from table
+                const row = document.querySelector(`tr[data-post-id="${deletePostId}"]`);
+                if (row) row.remove();
+
+                if (data.deleted_from_wordpress) {
+                    showToast('Também removido do WordPress', 'info');
+                }
+            } else {
+                showToast(data.message || 'Erro ao deletar', 'error');
+            }
+        } catch (error) {
+            showToast('Erro: ' + error.message, 'error');
+        }
+
+        deletePostId = null;
+    }
+
+    // ========== BULK SELECTION ==========
+
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.post-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const checkboxes = document.querySelectorAll('.post-checkbox:checked');
+        const count = checkboxes.length;
+        const bar = document.getElementById('bulk-actions-bar');
+        const countSpan = document.getElementById('selected-count');
+
+        if (count > 0) {
+            bar.style.display = 'block';
+            countSpan.textContent = count;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    function clearSelection() {
+        const checkboxes = document.querySelectorAll('.post-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.getElementById('select-all-checkbox').checked = false;
+        updateBulkBar();
+    }
+
+    function getSelectedPostIds() {
+        const checkboxes = document.querySelectorAll('.post-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    async function bulkDeletePosts() {
+        const postIds = getSelectedPostIds();
+        if (postIds.length === 0) {
+            showToast('Nenhum post selecionado', 'warning');
+            return;
+        }
+
+        // Open bulk delete modal
+        document.getElementById('bulk-delete-count').textContent = postIds.length;
+        openModal('bulk-delete-modal');
+    }
+
+    async function confirmBulkDelete() {
+        const postIds = getSelectedPostIds();
+        const deleteFromWp = document.getElementById('bulk-delete-from-wp').checked;
+
+        try {
+            const response = await fetch('/automation/posts/bulk-delete/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    post_ids: postIds,
+                    delete_from_wordpress: deleteFromWp
+                }),
+            });
+            const data = await response.json();
+
+            closeModal('bulk-delete-modal');
+
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                // Remove rows from table
+                postIds.forEach(id => {
+                    const row = document.querySelector(`tr[data-post-id="${id}"]`);
+                    if (row) row.remove();
+                });
+
+                if (data.wp_deleted_count > 0) {
+                    showToast(`${data.wp_deleted_count} removido(s) do WordPress`, 'info');
+                }
+
+                clearSelection();
+            } else {
+                showToast(data.message || 'Erro ao deletar', 'error');
             }
         } catch (error) {
             showToast('Erro: ' + error.message, 'error');
         }
     }
 </script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" id="delete-modal">
+    <div class="modal" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Confirmar Exclusão</h3>
+            <button class="modal-close" onclick="closeModal('delete-modal')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Tem certeza que deseja deletar o post "<strong id="delete-post-keyword"></strong>"?</p>
+            <div id="delete-wp-option" class="mt-4" style="display: none;">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="delete-from-wp">
+                    <span>Deletar também do WordPress</span>
+                </label>
+                <p class="text-sm text-muted mt-1">O post será movido para a lixeira no WordPress.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('delete-modal')">Cancelar</button>
+            <button class="btn btn-error" onclick="confirmDeletePost()">Deletar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal-backdrop" id="bulk-delete-modal">
+    <div class="modal" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Deletar em Massa</h3>
+            <button class="modal-close" onclick="closeModal('bulk-delete-modal')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Tem certeza que deseja deletar <strong id="bulk-delete-count">0</strong> post(s)?</p>
+            <div class="mt-4">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="bulk-delete-from-wp">
+                    <span>Deletar também do WordPress</span>
+                </label>
+                <p class="text-sm text-muted mt-1">Os posts publicados serão movidos para a lixeira.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('bulk-delete-modal')">Cancelar</button>
+            <button class="btn btn-error" onclick="confirmBulkDelete()">Deletar Todos</button>
+        </div>
+    </div>
+</div>
 {% endblock %}

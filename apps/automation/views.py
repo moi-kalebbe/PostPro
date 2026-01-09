@@ -159,6 +159,180 @@ def post_approve_view(request, post_id):
 
 
 @login_required
+@agency_required
+@require_POST
+def post_delete_view(request, post_id):
+    """
+    Delete a single post.
+    
+    Body: {"delete_from_wordpress": true/false}
+    """
+    from services.wordpress import WordPressService
+    from .models import ActivityLog
+    
+    post = get_object_or_404(
+        Post.objects.select_related('project', 'project__agency'),
+        id=post_id,
+        project__agency=request.user.agency
+    )
+    
+    data = json.loads(request.body) if request.body else {}
+    delete_from_wp = data.get('delete_from_wordpress', False)
+    
+    project = post.project
+    wp_result = None
+    
+    # Delete from WordPress if requested and post was published
+    if delete_from_wp and post.wordpress_post_id:
+        try:
+            wp_password = project.get_wordpress_password()
+            if wp_password and project.wordpress_username:
+                wp_service = WordPressService(
+                    site_url=project.wordpress_url,
+                    username=project.wordpress_username,
+                    app_password=wp_password
+                )
+                wp_result = wp_service.delete_post(post.wordpress_post_id)
+        except Exception as e:
+            wp_result = {'success': False, 'message': str(e)}
+    
+    # Store info for response before deleting
+    post_keyword = post.keyword
+    post_title = post.title
+    
+    # Log activity
+    ActivityLog.objects.create(
+        agency=project.agency,
+        project=project,
+        actor_user=request.user,
+        action="POST_DELETED",
+        entity_type="Post",
+        entity_id=str(post.id),
+        metadata={
+            "keyword": post_keyword,
+            "title": post_title,
+            "deleted_from_wp": delete_from_wp,
+            "wp_result": wp_result,
+        }
+    )
+    
+    # Delete from local database
+    post.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Post deletado com sucesso',
+        'deleted_from_wordpress': wp_result.get('success', False) if wp_result else False,
+        'wp_message': wp_result.get('message', '') if wp_result else '',
+    })
+
+
+@login_required
+@agency_required
+@require_POST
+def posts_bulk_delete_view(request):
+    """
+    Delete multiple posts at once.
+    
+    Body: {"post_ids": ["uuid1", "uuid2", ...], "delete_from_wordpress": true/false}
+    """
+    from services.wordpress import WordPressService
+    from .models import ActivityLog
+    
+    data = json.loads(request.body) if request.body else {}
+    post_ids = data.get('post_ids', [])
+    delete_from_wp = data.get('delete_from_wordpress', False)
+    
+    if not post_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'Nenhum post selecionado'
+        }, status=400)
+    
+    agency = request.user.agency
+    
+    # Get all posts
+    posts = Post.objects.filter(
+        id__in=post_ids,
+        project__agency=agency
+    ).select_related('project', 'project__agency')
+    
+    deleted_count = 0
+    wp_deleted_count = 0
+    errors = []
+    
+    # Group posts by project for efficient WordPress deletion
+    posts_by_project = {}
+    for post in posts:
+        if post.project.id not in posts_by_project:
+            posts_by_project[post.project.id] = {
+                'project': post.project,
+                'posts': []
+            }
+        posts_by_project[post.project.id]['posts'].append(post)
+    
+    # Process deletions
+    for project_id, data in posts_by_project.items():
+        project = data['project']
+        project_posts = data['posts']
+        
+        # Initialize WordPress service if needed
+        wp_service = None
+        if delete_from_wp:
+            try:
+                wp_password = project.get_wordpress_password()
+                if wp_password and project.wordpress_username:
+                    wp_service = WordPressService(
+                        site_url=project.wordpress_url,
+                        username=project.wordpress_username,
+                        app_password=wp_password
+                    )
+            except Exception:
+                pass
+        
+        for post in project_posts:
+            try:
+                # Delete from WordPress if applicable
+                if wp_service and post.wordpress_post_id:
+                    result = wp_service.delete_post(post.wordpress_post_id)
+                    if result.get('success'):
+                        wp_deleted_count += 1
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    agency=agency,
+                    project=project,
+                    actor_user=request.user,
+                    action="POST_DELETED",
+                    entity_type="Post",
+                    entity_id=str(post.id),
+                    metadata={
+                        "keyword": post.keyword,
+                        "bulk_delete": True,
+                    }
+                )
+                
+                # Delete from local database
+                post.delete()
+                deleted_count += 1
+                
+            except Exception as e:
+                errors.append({
+                    'post_id': str(post.id),
+                    'keyword': post.keyword,
+                    'error': str(e)
+                })
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'{deleted_count} post(s) deletado(s)',
+        'deleted_count': deleted_count,
+        'wp_deleted_count': wp_deleted_count,
+        'errors': errors if errors else None,
+    })
+
+
+@login_required
 @project_access_required
 @require_POST
 def batch_upload_submit_view(request, project_id):

@@ -305,6 +305,12 @@ class PostPro_Plugin {
             'callback' => array($this, 'receive_post'),
             'permission_callback' => array($this, 'verify_license'),
         ));
+        
+        register_rest_route('postpro/v1', '/delete-post', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'delete_post'),
+            'permission_callback' => array($this, 'verify_license'),
+        ));
     }
     
     public function verify_license($request) {
@@ -476,6 +482,79 @@ class PostPro_Plugin {
         }
         
         @unlink($tmp);
+    }
+    
+    /**
+     * Delete a post from WordPress.
+     * 
+     * POST /postpro/v1/delete-post
+     * Body: {"post_id": 123} or {"external_id": "xxx-xxx"}
+     * Optional: {"force": true} - permanently delete instead of trash
+     */
+    public function delete_post($request) {
+        $data = $request->get_json_params();
+        
+        $wp_post_id = null;
+        $force = !empty($data['force']);
+        
+        // Find post by WordPress ID
+        if (!empty($data['post_id'])) {
+            $wp_post_id = intval($data['post_id']);
+        }
+        
+        // Or find by external_id (PostPro ID)
+        if (!$wp_post_id && !empty($data['external_id'])) {
+            $existing = get_posts(array(
+                'meta_key' => '_postpro_external_id',
+                'meta_value' => sanitize_text_field($data['external_id']),
+                'post_type' => 'post',
+                'posts_per_page' => 1,
+                'post_status' => 'any',
+            ));
+            
+            if (!empty($existing)) {
+                $wp_post_id = $existing[0]->ID;
+            }
+        }
+        
+        // Or find by PostPro post ID
+        if (!$wp_post_id && !empty($data['postpro_post_id'])) {
+            $existing = get_posts(array(
+                'meta_key' => '_postpro_post_id',
+                'meta_value' => sanitize_text_field($data['postpro_post_id']),
+                'post_type' => 'post',
+                'posts_per_page' => 1,
+                'post_status' => 'any',
+            ));
+            
+            if (!empty($existing)) {
+                $wp_post_id = $existing[0]->ID;
+            }
+        }
+        
+        if (!$wp_post_id) {
+            return new WP_Error('not_found', 'Post not found', array('status' => 404));
+        }
+        
+        // Check if post exists
+        $post = get_post($wp_post_id);
+        if (!$post) {
+            return new WP_Error('not_found', 'Post not found', array('status' => 404));
+        }
+        
+        // Delete the post
+        $result = wp_delete_post($wp_post_id, $force);
+        
+        if (!$result) {
+            return new WP_Error('delete_failed', 'Failed to delete post', array('status' => 500));
+        }
+        
+        return array(
+            'success' => true,
+            'post_id' => $wp_post_id,
+            'message' => $force ? 'Post permanently deleted' : 'Post moved to trash',
+            'force' => $force,
+        );
     }
     
     // =========================================================================

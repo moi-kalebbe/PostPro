@@ -255,6 +255,58 @@ class WordPressService:
             
         except requests.RequestException:
             return None
+    
+    def delete_post(self, post_id: int, force: bool = False) -> dict:
+        """
+        Delete a WordPress post.
+        
+        Args:
+            post_id: WordPress post ID
+            force: If True, permanently delete. If False, move to trash.
+        
+        Returns:
+            dict with 'success', 'message', and optionally 'deleted_post'
+        """
+        try:
+            # WordPress REST API delete endpoint
+            # ?force=true permanently deletes, otherwise moves to trash
+            url = f"{self.api_base}/posts/{post_id}"
+            if force:
+                url += "?force=true"
+            
+            response = requests.delete(
+                url,
+                headers=self._get_auth_header(),
+                timeout=DEFAULT_TIMEOUT
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "success": True,
+                    "message": "Post deleted" if force else "Post moved to trash",
+                    "deleted_post": data,
+                }
+            elif response.status_code == 404:
+                return {
+                    "success": False,
+                    "message": "Post not found in WordPress",
+                }
+            elif response.status_code == 401:
+                raise AuthenticationError("Authentication failed")
+            else:
+                logger.error(f"Post deletion failed: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "message": f"Deletion failed: {response.status_code}",
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"Post deletion request failed: {e}")
+            return {
+                "success": False,
+                "message": f"Connection error: {str(e)}",
+            }
 
 
 def send_to_postpro_plugin(

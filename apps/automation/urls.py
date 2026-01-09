@@ -14,6 +14,8 @@ urlpatterns = [
     path('posts/<uuid:post_id>/regenerate/', views.post_regenerate_view, name='post_regenerate'),
     path('posts/<uuid:post_id>/publish/', views.post_publish_view, name='post_publish'),
     path('posts/<uuid:post_id>/approve/', views.post_approve_view, name='post_approve'),
+    path('posts/<uuid:post_id>/delete/', views.post_delete_view, name='post_delete'),
+    path('posts/bulk-delete/', views.posts_bulk_delete_view, name='posts_bulk_delete'),
     
     # Batches
     path('batches/', views.batches_list_view, name='batches_list'),
