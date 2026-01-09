@@ -155,7 +155,8 @@ class EditorialPipelineService:
         self, 
         plan: EditorialPlan, 
         trend_pack: Optional[TrendPack],
-        days: int
+        days: int,
+        avoid_topics: list = None
     ):
         """Generate title ideas and create PlanItems."""
         
@@ -172,6 +173,18 @@ class EditorialPipelineService:
         
         keywords_str = ", ".join(plan.keywords)
         
+        # Build avoid topics list (existing + rejected)
+        all_avoid = list(existing_titles[:20])
+        if avoid_topics:
+            all_avoid.extend(avoid_topics)
+        
+        avoid_section = ""
+        if all_avoid:
+            avoid_section = f"""
+AVOID these topics (already exist or rejected):
+{json.dumps(all_avoid[:50], ensure_ascii=False)}
+"""
+        
         prompt = f"""Create a {days}-day editorial calendar for a blog about: {keywords_str}.
         
 Site Context:
@@ -180,9 +193,7 @@ Existing Content Themes: {', '.join([c['name'] for c in profile.categories]) if 
 Tone: {self.project.tone}
 
 {trends_context}
-
-AVOID these existing topics (Cannibalization Check):
-{json.dumps(existing_titles[:20])}
+{avoid_section}
 
 Requirements:
 1. Generate exactly 1 post idea per day for {days} days.
@@ -190,6 +201,7 @@ Requirements:
 3. Group topics into logical clusters.
 4. Titles must be click-worthy and SEO optimized.
 5. Use Portuguese (Brazil).
+6. NEVER repeat topics from the AVOID list above.
 
 Return ONLY valid JSON matching the schema."""
         

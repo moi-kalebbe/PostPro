@@ -483,12 +483,13 @@ def publish_to_wordpress(self, post_id: str):
             logger.error(f"Failed to publish post {post_id}: {error}")
             raise Exception(error)
 @shared_task(bind=True, max_retries=3)
-def generate_editorial_plan(self, plan_id: str):
+def generate_editorial_plan(self, plan_id: str, avoid_topics: list = None):
     """
     Generate titles for an editorial plan using AI.
     
     Args:
         plan_id: UUID of the EditorialPlan
+        avoid_topics: List of topic titles to avoid (from rejected plans)
     """
     from apps.automation.models import EditorialPlan
     from services.editorial_pipeline import EditorialPipelineService
@@ -496,6 +497,8 @@ def generate_editorial_plan(self, plan_id: str):
     from services.site_profile import SiteProfileService
     
     logger.info(f"Generating editorial plan {plan_id}")
+    if avoid_topics:
+        logger.info(f"Avoiding {len(avoid_topics)} previously rejected topics")
     
     try:
         plan = EditorialPlan.objects.select_related(
@@ -528,8 +531,8 @@ def generate_editorial_plan(self, plan_id: str):
              plan.save()
         
         # Generate items (and trends if needed)
-        # We assume 30 days for now, or get from plan if stored
-        pipeline._generate_plan_items(plan, plan.trend_pack, days=30)
+        # Pass avoid_topics to pipeline for history-aware generation
+        pipeline._generate_plan_items(plan, plan.trend_pack, days=30, avoid_topics=avoid_topics or [])
         
         # Update status
         plan.status = EditorialPlan.Status.PENDING_APPROVAL

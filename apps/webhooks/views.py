@@ -573,3 +573,238 @@ def save_keywords_view(request):
             "success": False,
             "error": str(e)
         }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@license_required
+def approve_plan_item_view(request, item_id):
+    """
+    Approve a single editorial plan item and start generation.
+    
+    POST /api/v1/project/editorial-plan/item/<item_id>/approve
+    Headers: X-License-Key
+    """
+    from apps.automation.models import EditorialPlanItem
+    from apps.automation.tasks import generate_post_from_plan_item
+    
+    project = request.project
+    
+    try:
+        item = EditorialPlanItem.objects.select_related('plan').get(
+            id=item_id,
+            plan__project=project
+        )
+    except EditorialPlanItem.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Item not found"
+        }, status=404)
+    
+    if item.status not in [EditorialPlanItem.Status.PENDING, EditorialPlanItem.Status.FAILED]:
+        return JsonResponse({
+            "success": False,
+            "error": f"Item cannot be approved (current status: {item.status})"
+        }, status=400)
+    
+    # Mark as scheduled/generating
+    item.status = EditorialPlanItem.Status.SCHEDULED
+    item.save(update_fields=['status'])
+    
+    # Trigger post generation
+    generate_post_from_plan_item.delay(str(item.id))
+    
+    return JsonResponse({
+        "success": True,
+        "message": "Item approved and generation started",
+        "item_id": str(item.id),
+        "status": item.status
+    })
+
+
+@require_POST
+@csrf_exempt
+@license_required
+def approve_all_plan_items_view(request):
+    """
+    Approve all pending items in the current editorial plan.
+    
+    POST /api/v1/project/editorial-plan/approve-all
+    Headers: X-License-Key
+    """
+    from apps.automation.models import EditorialPlanItem
+    from apps.automation.tasks import generate_post_from_plan_item
+    
+    project = request.project
+    
+    # Get active plan
+    plan = EditorialPlan.objects.filter(
+        project=project
+    ).exclude(
+        status__in=[EditorialPlan.Status.REJECTED, EditorialPlan.Status.COMPLETED]
+    ).order_by('-created_at').first()
+    
+    if not plan:
+        return JsonResponse({
+            "success": False,
+            "error": "No active plan found"
+        }, status=404)
+    
+    # Get pending items
+    pending_items = plan.items.filter(
+        status__in=[EditorialPlanItem.Status.PENDING, EditorialPlanItem.Status.FAILED]
+    )
+    
+    count = pending_items.count()
+    if count == 0:
+        return JsonResponse({
+            "success": True,
+            "message": "No pending items to approve",
+            "approved_count": 0
+        })
+    
+    # Update all to SCHEDULED
+    pending_items.update(status=EditorialPlanItem.Status.SCHEDULED)
+    
+    # Update plan status
+    plan.status = EditorialPlan.Status.APPROVED
+    plan.save(update_fields=['status'])
+    
+    # Trigger generation for each
+    for item in plan.items.filter(status=EditorialPlanItem.Status.SCHEDULED):
+        generate_post_from_plan_item.delay(str(item.id))
+    
+    return JsonResponse({
+        "success": True,
+        "message": f"All {count} items approved and generation started",
+        "approved_count": count,
+        "plan_status": plan.status
+    })
+
+
+@require_POST
+@csrf_exempt
+@license_required
+def update_plan_item_view(request, item_id):
+    """
+    Update an editorial plan item (title/keyword).
+    
+    POST /api/v1/project/editorial-plan/item/<item_id>
+    Headers: X-License-Key
+    Body: {"title": "...", "keyword_focus": "..."}
+    """
+    from apps.automation.models import EditorialPlanItem
+    
+    project = request.project
+    
+    try:
+        item = EditorialPlanItem.objects.select_related('plan').get(
+            id=item_id,
+            plan__project=project
+        )
+    except EditorialPlanItem.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Item not found"
+        }, status=404)
+    
+    # Only allow edits on pending items
+    if item.status not in [EditorialPlanItem.Status.PENDING, EditorialPlanItem.Status.FAILED]:
+        return JsonResponse({
+            "success": False,
+            "error": "Cannot edit item that is already being processed"
+        }, status=400)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "error": "Invalid JSON body"
+        }, status=400)
+    
+    # Update fields
+    if 'title' in data:
+        item.title = data['title'][:500]
+    if 'keyword_focus' in data:
+        item.keyword_focus = data['keyword_focus'][:200]
+    
+    item.save(update_fields=['title', 'keyword_focus'])
+    
+    return JsonResponse({
+        "success": True,
+        "message": "Item updated",
+        "item": {
+            "id": str(item.id),
+            "title": item.title,
+            "keyword_focus": item.keyword_focus,
+            "status": item.status
+        }
+    })
+
+
+@require_POST
+@csrf_exempt
+@license_required
+def reject_plan_view(request):
+    """
+    Reject current plan and regenerate with new topics.
+    Avoids previously rejected topics.
+    
+    POST /api/v1/project/editorial-plan/reject
+    Headers: X-License-Key
+    """
+    from apps.automation.models import EditorialPlan as EP
+    from apps.automation.tasks import generate_editorial_plan
+    from datetime import date, timedelta
+    
+    project = request.project
+    
+    # Get current active plan
+    current_plan = EP.objects.filter(
+        project=project
+    ).exclude(
+        status__in=[EP.Status.REJECTED, EP.Status.COMPLETED]
+    ).order_by('-created_at').first()
+    
+    if not current_plan:
+        return JsonResponse({
+            "success": False,
+            "error": "No active plan to reject"
+        }, status=404)
+    
+    # Collect topics to avoid from current plan
+    avoid_topics = list(current_plan.items.values_list('title', flat=True))
+    
+    # Also collect from previously rejected plans
+    rejected_plans = EP.objects.filter(
+        project=project,
+        status=EP.Status.REJECTED
+    )
+    for rp in rejected_plans:
+        avoid_topics.extend(list(rp.items.values_list('title', flat=True)))
+    
+    # Mark current as rejected
+    current_plan.status = EP.Status.REJECTED
+    current_plan.rejection_reason = "Rejected by user via plugin"
+    current_plan.save(update_fields=['status', 'rejection_reason'])
+    
+    # Create new plan
+    new_plan = EP.objects.create(
+        project=project,
+        keywords=current_plan.keywords,  # Reuse same keywords
+        start_date=date.today() + timedelta(days=1),
+        status=EP.Status.GENERATING
+    )
+    
+    # Trigger generation with avoid list
+    generate_editorial_plan.delay(str(new_plan.id), avoid_topics=avoid_topics)
+    
+    return JsonResponse({
+        "success": True,
+        "message": "Plan rejected. Generating new plan with fresh topics.",
+        "rejected_plan_id": str(current_plan.id),
+        "new_plan_id": str(new_plan.id),
+        "avoided_topics_count": len(avoid_topics)
+    })
+

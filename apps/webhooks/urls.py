@@ -14,6 +14,10 @@ urlpatterns = [
     # Project operations
     path('project/sync-profile', views.sync_site_profile_view, name='sync_profile'),
     path('project/editorial-plan', views.editorial_plan_view, name='editorial_plan'),
+    path('project/editorial-plan/approve-all', views.approve_all_plan_items_view, name='approve_all_plan'),
+    path('project/editorial-plan/reject', views.reject_plan_view, name='reject_plan'),
+    path('project/editorial-plan/item/<uuid:item_id>', views.update_plan_item_view, name='update_plan_item'),
+    path('project/editorial-plan/item/<uuid:item_id>/approve', views.approve_plan_item_view, name='approve_plan_item'),
     path('project/keywords', views.save_keywords_view, name='save_keywords'),
     
     # Batch operations
