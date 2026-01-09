@@ -1,4 +1,10 @@
-{% extends 'base.html' %}
+import os
+import time
+
+target_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\posts_list.html'
+temp_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\posts_list_fixed.html'
+
+content = """{% extends 'base.html' %}
 {% load static %}
 {# Syntax Fix applied: 2026-01-09 (Scripted) #}
 
@@ -463,3 +469,15 @@
     </div>
 </div>
 {% endblock %}
+"""
+
+# Write to temp file
+with open(temp_file, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+# Force replace
+if os.path.exists(target_file):
+    os.remove(target_file)
+
+os.rename(temp_file, target_file)
+print(f"File replaced successfully. New size: {os.path.getsize(target_file)}")
