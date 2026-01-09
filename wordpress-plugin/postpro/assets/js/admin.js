@@ -510,12 +510,15 @@
 
     // Keywords Form Handler
     function initKeywordsForm() {
-        $('#postpro-keywords-form').on('submit', function (e) {
+        var $forms = $('#postpro-keywords-form, #postpro-keywords-form-settings');
+
+        $forms.on('submit', function (e) {
             e.preventDefault();
 
             var $form = $(this);
-            var $btn = $form.find('#postpro-save-keywords');
-            var $result = $('#postpro-keywords-result');
+            var isSettings = $form.attr('id') === 'postpro-keywords-form-settings';
+            var $btn = isSettings ? $('#postpro-save-keywords-settings') : $('#postpro-save-keywords');
+            var $result = isSettings ? $('#postpro-keywords-result-settings') : $('#postpro-keywords-result');
 
             var keywordsValues = $form.find('input[name="keywords[]"]').map(function () {
                 return $(this).val().trim();
@@ -567,6 +570,10 @@
     function formatDate(dateString) {
         if (!dateString) return '';
         var date = new Date(dateString);
+        // Fix timezone offset issue manually or just use substring
+        // Simple fix: append T00:00:00 if missing time to ensure local date interpretation
+        if (dateString.indexOf('T') === -1) dateString += 'T12:00:00';
+        date = new Date(dateString);
         return date.toLocaleDateString('pt-BR');
     }
 

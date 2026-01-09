@@ -112,10 +112,34 @@ class PostPro_Plugin {
                     <span class="dashicons dashicons-update" style="vertical-align: text-bottom;"></span> Sincronizar Perfil do Site
                 </button>
                 <div id="postpro-connection-result" class="postpro-result" style="display:none;"></div>
+                <div id="postpro-connection-result" class="postpro-result" style="display:none;"></div>
                 <div id="postpro-sync-result" class="postpro-result" style="display:none;"></div>
             </div>
 
-            <!-- Upload Card Removed as per user request (Manual Keywords only) -->
+            <!-- Manual Keywords Card -->
+            <div class="card postpro-card">
+                <h2>Definir Palavras-Chave do Nicho</h2>
+                <p>Defina de 5 a 10 palavras-chave principais do seu nicho. O PostPro usará estas palavras para pesquisar tendências e gerar seu plano editorial.</p>
+                
+                <form id="postpro-keywords-form-settings" style="max-width: 600px; margin-top: 20px;">
+                    <div id="keywords-inputs-settings">
+                        <input type="text" name="keywords[]" class="regular-text" placeholder="Ex: beach tennis" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                        <input type="text" name="keywords[]" class="regular-text" style="width:100%; margin-bottom: 5px;">
+                    </div>
+                    <p class="description">Preencha pelo menos 5 campos.</p>
+                    <br>
+                    <button type="submit" id="postpro-save-keywords-settings" class="button button-primary">Salvar e Gerar Plano Editorial</button>
+                    <div id="postpro-keywords-result-settings" class="postpro-result" style="display:none;"></div>
+                </form>
+            </div>
         </div>
         <?php
     }
