@@ -252,8 +252,13 @@
             },
             success: function (response) {
                 if (response.success) {
-                    if (response.data.has_plan) {
-                        var plan = response.data.plan;
+                    var plan = response.data.plan;
+                    // Treat 'rejected' or 'failed' as no plan so user can regenerate
+                    var showPlan = response.data.has_plan &&
+                        plan.status !== 'rejected' &&
+                        plan.status !== 'failed';
+
+                    if (showPlan) {
                         var items = response.data.items;
 
                         // ACTION BUTTONS HEADER

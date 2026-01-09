@@ -1,0 +1,173 @@
+/**
+ * PostPro Admin CSS
+ */
+
+/* General Wrapper */
+.postpro-wrapper {
+    max-width: 1200px;
+    margin: 20px 20px 0 0;
+}
+
+/* Card Style */
+.postpro-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.postpro-card h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* Progress Bar */
+.postpro-progress-bar {
+    background: #f0f0f1;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    height: 20px;
+    margin: 15px 0 5px;
+    overflow: hidden;
+}
+
+.postpro-progress-fill {
+    background: #2271b1;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.postpro-progress-text {
+    font-size: 12px;
+    color: #646970;
+    text-align: right;
+}
+
+/* Results Area */
+.postpro-result {
+    margin-top: 15px;
+    padding: 10px;
+    border-left: 4px solid transparent;
+    background: #fff;
+}
+
+.postpro-result.success {
+    border-left-color: #46b450;
+    background: #ecf7ed;
+}
+
+.postpro-result.error {
+    border-left-color: #dc3232;
+    background: #fbeaea;
+}
+
+/* Simulation Grid */
+.postpro-simulation-results {
+    margin-top: 15px;
+}
+
+.postpro-simulation-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.postpro-simulation-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.postpro-simulation-item .value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #2271b1;
+}
+
+.postpro-simulation-item .label {
+    font-size: 0.9em;
+    color: #666;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+/* Editorial Plan Table */
+#postpro-plan-content table {
+    width: 100%;
+    table-layout: fixed; /* Enforce column widths */
+    border-collapse: collapse;
+}
+
+#postpro-plan-content th,
+#postpro-plan-content td {
+    padding: 10px;
+    vertical-align: top;
+    text-align: left;
+}
+
+/* Column Widths */
+#postpro-plan-content th:nth-child(1) { width: 60px; } /* Day */
+#postpro-plan-content th:nth-child(2) { width: auto; } /* Title - takes remaining space */
+#postpro-plan-content th:nth-child(3) { width: 120px; } /* Status */
+#postpro-plan-content th:nth-child(4) { width: 120px; } /* Date */
+#postpro-plan-content th:nth-child(5) { width: 160px; } /* Actions */
+
+/* Badges */
+.postpro-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.postpro-badge.status-pending { background: #f0f0f1; color: #646970; border: 1px solid #ccd0d4; }
+.postpro-badge.status-scheduled { background: #e5f5fa; color: #0f6c95; border: 1px solid #bce1f1; }
+.postpro-badge.status-generating { background: #fff8e5; color: #996800; border: 1px solid #f0c33c; }
+.postpro-badge.status-completed { background: #ecf7ed; color: #146c43; border: 1px solid #8fae9b; }
+.postpro-badge.status-failed { background: #fbeaea; color: #b32d2e; border: 1px solid #ffb9b9; }
+
+/* Edit Mode Inputs */
+.edit-mode input.regular-text {
+    width: 100% !important;
+    margin-bottom: 5px;
+    box-sizing: border-box;
+}
+
+/* Action Buttons Header */
+#postpro-plan-actions button {
+    margin-right: 10px;
+}
+
+/* Button variants */
+.button.button-link-delete {
+    border: 1px solid #dc3232;
+    background: #fff;
+    color: #dc3232;
+}
+.button.button-link-delete:hover {
+    background: #dc3232;
+    color: #fff;
+    border-color: #dc3232;
+}
+
+/* Animations */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinner.is-active {
+    display: inline-block;
+    margin-right: 10px;
+}
