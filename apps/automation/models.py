@@ -144,7 +144,7 @@ class Post(models.Model):
     # WordPress integration
     wordpress_post_id = models.PositiveIntegerField(null=True, blank=True)
     wordpress_idempotency_key = models.CharField(max_length=64, blank=True, null=True)
-    wordpress_edit_url = models.URLField(max_length=1000, blank=True)
+    wordpress_edit_url = models.URLField(max_length=1000, blank=True, null=True)
     
     # Cost tracking
     text_generation_cost = models.DecimalField(
