@@ -19,4 +19,7 @@ urlpatterns = [
     path('posts/<uuid:post_id>', views.post_detail_view, name='post_detail'),
     path('posts/<uuid:post_id>/publish', views.post_publish_view, name='post_publish'),
     path('posts/<uuid:post_id>/regenerate', views.post_regenerate_view, name='post_regenerate'),
+    
+    # Debug (temporary)
+    path('debug/batch-jobs', views.debug_batch_jobs, name='debug_batch_jobs'),
 ]

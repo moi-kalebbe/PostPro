@@ -5,6 +5,7 @@ Handles batch processing, post regeneration, and WordPress publishing.
 
 import logging
 import base64
+import os
 import pandas as pd
 from io import BytesIO
 from celery import shared_task
@@ -26,6 +27,8 @@ def process_csv_batch(self, batch_job_id: str):
     from services.openrouter import OpenRouterService
     from services.cost_estimator import CostEstimator
     
+    logger.info(f"Starting CSV batch processing for job {batch_job_id}")
+    
     try:
         batch_job = BatchJob.objects.select_related(
             'project', 'project__agency'
@@ -37,13 +40,17 @@ def process_csv_batch(self, batch_job_id: str):
     project = batch_job.project
     agency = project.agency
     
+    logger.info(f"Processing batch for project: {project.name}, file: {batch_job.original_filename}")
+    
     # Check if dry run
     if batch_job.is_dry_run:
+        logger.info("Dry run mode enabled")
         return process_dry_run(batch_job)
     
     # Get API key
     api_key = agency.get_openrouter_key()
     if not api_key:
+        logger.error("No OpenRouter API key configured")
         batch_job.mark_failed("No OpenRouter API key configured")
         return
     
@@ -53,11 +60,16 @@ def process_csv_batch(self, batch_job_id: str):
     
     # Read CSV/XLSX
     try:
+        logger.info(f"Attempting to read keywords from file: {batch_job.csv_file}")
         keywords = read_keywords_from_file(batch_job)
+        logger.info(f"Successfully read {len(keywords)} keywords: {keywords[:5]}...")
         batch_job.total_rows = len(keywords)
         batch_job.save()
     except Exception as e:
-        batch_job.mark_failed(f"Failed to read file: {e}")
+        error_msg = f"Failed to read file: {e}"
+        logger.error(error_msg)
+        logger.exception("Full traceback:")
+        batch_job.mark_failed(error_msg)
         return
     
     # Options
@@ -76,6 +88,8 @@ def process_csv_batch(self, batch_job_id: str):
     errors = []
     for i, keyword in enumerate(keywords):
         try:
+            logger.info(f"Processing keyword {i+1}/{len(keywords)}: {keyword}")
+            
             # Create post
             post = Post.objects.create(
                 batch_job=batch_job,
@@ -107,8 +121,11 @@ def process_csv_batch(self, batch_job_id: str):
             agency.current_month_posts += 1
             agency.save(update_fields=['current_month_posts'])
             
+            logger.info(f"Successfully processed keyword: {keyword}")
+            
         except Exception as e:
             logger.error(f"Failed to process keyword '{keyword}': {e}")
+            logger.exception("Full traceback:")
             errors.append({
                 "keyword": keyword,
                 "error": str(e),
@@ -182,13 +199,31 @@ def read_keywords_from_file(batch_job) -> list[str]:
     import csv
     
     if not batch_job.csv_file:
-        return []
+        logger.error("No CSV file attached to batch job")
+        raise ValueError("No CSV file attached to batch job")
     
     file_path = batch_job.csv_file.path
+    logger.info(f"Reading keywords from file path: {file_path}")
     
-    if file_path.endswith('.xlsx'):
+    # Check if file exists
+    if not os.path.exists(file_path):
+        logger.error(f"File does not exist: {file_path}")
+        # Try to read directly from the file field if it's stored differently
+        try:
+            content = batch_job.csv_file.read().decode('utf-8')
+            logger.info(f"Read file content directly from field, length: {len(content)}")
+            batch_job.csv_file.seek(0)  # Reset file pointer
+            # Parse as CSV from string
+            from io import StringIO
+            df = pd.read_csv(StringIO(content))
+        except Exception as e:
+            logger.error(f"Failed to read file content directly: {e}")
+            raise FileNotFoundError(f"CSV file not found at path: {file_path}")
+    elif file_path.endswith('.xlsx'):
+        logger.info("Reading as XLSX file")
         df = pd.read_excel(file_path)
     else:
+        logger.info("Reading as CSV file")
         # Try different encodings
         encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'utf-8-sig']
         df = None
@@ -197,25 +232,35 @@ def read_keywords_from_file(batch_job) -> list[str]:
         for encoding in encodings:
             try:
                 # Use sniffing to find delimiter
-                sep = ',' # Default
+                sep = ','  # Default
                 try:
                     with open(file_path, 'r', encoding=encoding, newline='') as csvfile:
                         # Read a sample. If file is small, read all.
                         sample = csvfile.read(2048)
-                        if not sample: # Empty file
+                        if not sample:  # Empty file
+                            logger.warning(f"Empty file with encoding {encoding}")
                             continue
+                        logger.info(f"File sample with {encoding}: {sample[:100]}...")
                         sniffer = csv.Sniffer()
-                        dialect = sniffer.sniff(sample, delimiters=[',', ';', '\t', '|'])
-                        sep = dialect.delimiter
-                except Exception:
+                        try:
+                            dialect = sniffer.sniff(sample, delimiters=[',', ';', '\t', '|'])
+                            sep = dialect.delimiter
+                        except csv.Error:
+                            # Single column CSV won't have delimiter to detect
+                            sep = ','
+                            logger.info("Could not sniff delimiter, using comma as default")
+                except Exception as sniff_error:
                     # Fallback to comma if sniffing fails (e.g. single column)
+                    logger.info(f"Sniffing failed: {sniff_error}, using comma")
                     sep = ','
                 
                 df = pd.read_csv(file_path, encoding=encoding, sep=sep)
                 logger.info(f"Successfully read CSV with encoding {encoding} and separator '{sep}'")
+                logger.info(f"DataFrame shape: {df.shape}, columns: {list(df.columns)}")
                 break
             except Exception as e:
                 error_msg = str(e)
+                logger.warning(f"Failed with encoding {encoding}: {e}")
                 continue
         
         if df is None:
@@ -225,9 +270,12 @@ def read_keywords_from_file(batch_job) -> list[str]:
     keyword_col = None
     target_cols = ['keyword', 'keywords', 'palavra-chave', 'palavra_chave', 'topic', 'tema', 'assunto']
     
+    logger.info(f"Looking for keyword column in: {list(df.columns)}")
+    
     for col in df.columns:
         if str(col).lower().strip() in target_cols:
             keyword_col = col
+            logger.info(f"Found keyword column: {keyword_col}")
             break
     
     if keyword_col is None:
@@ -243,6 +291,8 @@ def read_keywords_from_file(batch_job) -> list[str]:
     
     # Clean and filter
     keywords = [k.strip() for k in keywords if k.strip()]
+    
+    logger.info(f"Extracted {len(keywords)} keywords: {keywords}")
     
     if not keywords:
         raise ValueError("No valid keywords found in file")

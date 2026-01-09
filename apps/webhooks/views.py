@@ -4,10 +4,12 @@ API views for WordPress plugin integration.
 
 import json
 import logging
+import os
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.conf import settings
 
 from apps.projects.models import Project
 from apps.automation.models import Post, BatchJob
@@ -310,3 +312,65 @@ def post_detail_view(request, post_id):
         "created_at": post.created_at.isoformat(),
         "published_at": post.published_at.isoformat() if post.published_at else None,
     })
+
+
+@require_GET
+@csrf_exempt
+def debug_batch_jobs(request):
+    """
+    Debug endpoint to check batch job status and file accessibility.
+    
+    GET /api/v1/debug/batch-jobs
+    """
+    # Get last 10 jobs
+    jobs = BatchJob.objects.all().order_by('-created_at')[:10]
+    
+    media_root = str(settings.MEDIA_ROOT)
+    batch_uploads_path = os.path.join(media_root, 'batch_uploads')
+    
+    jobs_data = []
+    for job in jobs:
+        job_info = {
+            "id": str(job.id),
+            "original_filename": job.original_filename,
+            "status": job.status,
+            "progress": f"{job.processed_rows}/{job.total_rows}",
+            "created_at": job.created_at.isoformat(),
+            "error_log": job.error_log,
+        }
+        
+        if job.csv_file:
+            job_info["csv_file_field"] = str(job.csv_file)
+            job_info["csv_file_path"] = job.csv_file.path
+            job_info["file_exists"] = os.path.exists(job.csv_file.path)
+            
+            if os.path.exists(job.csv_file.path):
+                job_info["file_size"] = os.path.getsize(job.csv_file.path)
+                try:
+                    with open(job.csv_file.path, 'r', encoding='utf-8') as f:
+                        job_info["file_preview"] = f.read(200)
+                except Exception as e:
+                    job_info["file_read_error"] = str(e)
+        else:
+            job_info["csv_file_field"] = None
+        
+        jobs_data.append(job_info)
+    
+    # Get directory info
+    batch_uploads_exists = os.path.exists(batch_uploads_path)
+    batch_uploads_files = []
+    if batch_uploads_exists:
+        try:
+            batch_uploads_files = os.listdir(batch_uploads_path)[:20]
+        except Exception as e:
+            batch_uploads_files = [f"Error: {e}"]
+    
+    return JsonResponse({
+        "media_root": media_root,
+        "media_root_exists": os.path.exists(media_root),
+        "batch_uploads_path": batch_uploads_path,
+        "batch_uploads_exists": batch_uploads_exists,
+        "batch_uploads_files": batch_uploads_files,
+        "jobs": jobs_data,
+    })
+
