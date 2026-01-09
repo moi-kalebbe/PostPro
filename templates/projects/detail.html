@@ -137,7 +137,18 @@
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center text-muted p-6">
+                            {% if editorial_plan and editorial_plan.status == 'generating' %}
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="spinner"></div>
+                                <p><strong>Gerando plano editorial...</strong></p>
+                                <p class="text-sm">Isso pode levar alguns minutos. A IA está pesquisando tendências e
+                                    criando títulos otimizados.</p>
+                                <button class="btn btn-secondary btn-sm mt-2" onclick="location.reload()">🔄
+                                    Atualizar</button>
+                            </div>
+                            {% else %}
                             Nenhum plano editorial ativo. Configure as palavras do nicho para gerar um plano.
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

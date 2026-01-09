@@ -95,7 +95,7 @@ def project_detail_view(request, project_id):
     from apps.automation.models import EditorialPlan
     editorial_plan = EditorialPlan.objects.filter(
         project=project,
-        status__in=[EditorialPlan.Status.ACTIVE, EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.APPROVED]
+        status__in=[EditorialPlan.Status.GENERATING, EditorialPlan.Status.ACTIVE, EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.APPROVED]
     ).order_by('-created_at').first()
     
     editorial_items = []
