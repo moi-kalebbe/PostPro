@@ -308,6 +308,104 @@ class WordPressService:
                 "message": f"Connection error: {str(e)}",
             }
 
+    def get_categories(self) -> list[dict]:
+        """
+        Get all categories.
+        """
+        try:
+            items = []
+            page = 1
+            while True:
+                response = requests.get(
+                    f"{self.api_base}/categories",
+                    headers=self._get_auth_header(),
+                    params={"per_page": 100, "page": page, "hide_empty": False},
+                    timeout=DEFAULT_TIMEOUT
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if not data:
+                        break
+                    items.extend(data)
+                    if len(data) < 100:
+                        break
+                    page += 1
+                else:
+                    break
+            
+            return items
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch categories: {e}")
+            return []
+
+    def get_tags(self) -> list[dict]:
+        """
+        Get all tags (limit to first 1000).
+        """
+        try:
+            items = []
+            page = 1
+            while page <= 10:
+                response = requests.get(
+                    f"{self.api_base}/tags",
+                    headers=self._get_auth_header(),
+                    params={"per_page": 100, "page": page, "hide_empty": False},
+                    timeout=DEFAULT_TIMEOUT
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if not data:
+                        break
+                    items.extend(data)
+                    if len(data) < 100:
+                        break
+                    page += 1
+                else:
+                    break
+            
+            return items
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch tags: {e}")
+            return []
+
+    def get_recent_posts(self, limit: int = 20) -> list[dict]:
+        """
+        Get recent posts for context.
+        """
+        try:
+            response = requests.get(
+                f"{self.api_base}/posts",
+                headers=self._get_auth_header(),
+                params={"per_page": limit, "status": "publish"},
+                timeout=DEFAULT_TIMEOUT
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            return []
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch recent posts: {e}")
+            return []
+
+    def get_site_info(self) -> dict:
+        """
+        Get site basic info.
+        """
+        try:
+            response = requests.get(
+                f"{self.site_url}/wp-json",
+                timeout=DEFAULT_TIMEOUT
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            return {}
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch site info: {e}")
+            return {}
+
 
 def send_to_postpro_plugin(
     site_url: str,

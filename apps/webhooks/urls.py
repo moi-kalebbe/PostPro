@@ -11,6 +11,10 @@ urlpatterns = [
     # License validation
     path('validate-license', views.validate_license_view, name='validate_license'),
     
+    # Project operations
+    path('project/sync-profile', views.sync_site_profile_view, name='sync_profile'),
+    path('project/editorial-plan', views.editorial_plan_view, name='editorial_plan'),
+    
     # Batch operations
     path('batch-upload', views.batch_upload_view, name='batch_upload'),
     path('batch/<uuid:batch_id>/status', views.batch_status_view, name='batch_status'),

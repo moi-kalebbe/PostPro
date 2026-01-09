@@ -142,7 +142,39 @@
     color: #FF6B2C;
 }
 
-.postpro-simulation-item .label {
-    color: #666;
-    font-size: 12px;
+
+/* Badges */
+.postpro-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-transform: uppercase;
+}
+
+.postpro-badge.status-scheduled {
+    background: #d3e3fd;
+    color: #0842a0;
+}
+
+.postpro-badge.status-generating {
+    background: #fff8c5;
+    color: #7d5700;
+}
+
+.postpro-badge.status-completed {
+    background: #c6f6d5;
+    color: #0f5132;
+}
+
+.postpro-badge.status-failed {
+    background: #ffebe9;
+    color: #cf222e;
+}
+
+.postpro-badge.status-pending {
+    background: #f1f5f9;
+    color: #475569;
 }

@@ -521,12 +521,15 @@ def generate_editorial_plan(self, plan_id: str):
         openrouter = OpenRouterService(api_key)
         pipeline = EditorialPipelineService(project, openrouter)
         
-        # Get site profile
-        site_profile_service = SiteProfileService(project)
-        site_profile = site_profile_service.get_or_create_profile()
+        # Ensure site profile exists
+        if not plan.site_profile:
+             site_profile_service = SiteProfileService(project)
+             plan.site_profile = site_profile_service.get_or_create_profile()
+             plan.save()
         
-        # Generate titles
-        pipeline._generate_titles(plan, site_profile)
+        # Generate items (and trends if needed)
+        # We assume 30 days for now, or get from plan if stored
+        pipeline._generate_plan_items(plan, plan.trend_pack, days=30)
         
         # Update status
         plan.status = EditorialPlan.Status.PENDING_APPROVAL
@@ -699,7 +702,7 @@ def sync_site_profile(self, project_id: str):
     
     try:
         service = SiteProfileService(project)
-        profile = service.get_or_create_profile(force_refresh=True)
+        profile = service.sync_profile()
         
         logger.info(f"Site profile synced for {project.name}: {profile.site_name}")
         

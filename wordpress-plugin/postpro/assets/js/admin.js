@@ -9,6 +9,8 @@
         initTestConnection();
         initUploadForm();
         initCopyButtons();
+        initSyncProfile();
+        initEditorialPlan();
     });
 
     // Test Connection
@@ -177,6 +179,128 @@
                 }, 2000);
             });
         });
+    }
+
+    // Sync Profile
+    function initSyncProfile() {
+        $('#postpro-sync-profile').on('click', function () {
+            var $btn = $(this);
+            var $result = $('#postpro-sync-result');
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update" style="animation: spin 2s linear infinite;"></span> Sincronizando...');
+            $result.hide();
+
+            $.ajax({
+                url: postproAdmin.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'postpro_sync_profile',
+                    nonce: postproAdmin.nonce
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $result.removeClass('error').addClass('success')
+                            .html('<strong>✓ Sincronização iniciada!</strong> O processo ocorrerá em segundo plano.').show();
+                    } else {
+                        $result.removeClass('success').addClass('error')
+                            .html('<strong>✗ Erro:</strong> ' + (response.data || 'Falha desconhecida')).show();
+                    }
+                },
+                error: function () {
+                    $result.removeClass('success').addClass('error')
+                        .html('<strong>✗ Erro de conexão</strong>').show();
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-update" style="vertical-align: text-bottom;"></span> Sincronizar Perfil do Site');
+                }
+            });
+        });
+    }
+
+    // Editorial Plan
+    function initEditorialPlan() {
+        var $container = $('#postpro-plan-content');
+        if (!$container.length) return;
+
+        loadEditorialPlan();
+
+        $('#postpro-refresh-plan').on('click', function () {
+            loadEditorialPlan();
+        });
+    }
+
+    function loadEditorialPlan() {
+        var $loading = $('#postpro-plan-loading');
+        var $content = $('#postpro-plan-content');
+        var $empty = $('#postpro-plan-empty');
+        var $error = $('#postpro-plan-error');
+        var $items = $('#postpro-plan-items');
+        var $meta = $('#postpro-plan-meta');
+
+        $loading.show();
+        $content.hide();
+        $empty.hide();
+        $error.hide();
+
+        $.ajax({
+            url: postproAdmin.ajaxUrl,
+            type: 'POST', // POST to keep consistent with others, though GET logic in PHP
+            data: {
+                action: 'postpro_get_plan',
+                nonce: postproAdmin.nonce
+            },
+            success: function (response) {
+                if (response.success) {
+                    if (response.data.has_plan) {
+                        var plan = response.data.plan;
+                        var items = response.data.items;
+
+                        // Render Meta
+                        var metaHtml = '<strong>Status:</strong> ' + plan.status_label +
+                            ' | <strong>Início:</strong> ' + formatDate(plan.start_date);
+                        $meta.html(metaHtml);
+
+                        // Render Items
+                        var html = '';
+                        items.forEach(function (item) {
+                            var statusClass = 'status-' + item.status.toLowerCase();
+                            var scheduledDate = item.scheduled_date ? formatDate(item.scheduled_date) : '-';
+
+                            html += '<tr>';
+                            html += '<td>Dia ' + item.day + '</td>';
+                            html += '<td><strong>' + (item.title || item.keyword) + '</strong><br><small>Foco: ' + item.keyword + '</small></td>';
+                            html += '<td><span class="postpro-badge ' + statusClass + '">' + item.status_label + '</span></td>';
+                            html += '<td>' + scheduledDate + '</td>';
+                            html += '<td>';
+                            if (item.post_id) {
+                                html += '<a href="post.php?post=' + item.post_id + '&action=edit" class="button button-small" target="_blank">Ver Post</a>';
+                            }
+                            html += '</td>';
+                            html += '</tr>';
+                        });
+
+                        $items.html(html);
+                        $content.show();
+                    } else {
+                        $empty.show();
+                    }
+                } else {
+                    $error.html('Erro ao carregar plano: ' + (response.data || 'Desconhecido')).show();
+                }
+            },
+            error: function () {
+                $error.html('Erro de conexão ao carregar plano').show();
+            },
+            complete: function () {
+                $loading.hide();
+            }
+        });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        var date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR');
     }
 
 })(jQuery);

@@ -41,6 +41,8 @@ class PostPro_Plugin {
         add_action('rest_api_init', array($this, 'register_rest_routes'));
         add_action('wp_ajax_postpro_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_postpro_upload_csv', array($this, 'ajax_upload_csv'));
+        add_action('wp_ajax_postpro_sync_profile', array($this, 'ajax_sync_profile'));
+        add_action('wp_ajax_postpro_get_plan', array($this, 'ajax_get_plan'));
     }
     
     // =========================================================================
@@ -65,6 +67,15 @@ class PostPro_Plugin {
             'manage_options',
             'postpro',
             array($this, 'render_settings_page')
+        );
+        
+        add_submenu_page(
+            'postpro',
+            'Plano Editorial',
+            'Plano Editorial',
+            'manage_options',
+            'postpro-editorial',
+            array($this, 'render_editorial_plan_page')
         );
         
         add_submenu_page(
@@ -178,6 +189,20 @@ class PostPro_Plugin {
                     </p>
                 </form>
                 
+                <hr>
+                
+                <h3>Ações de Sincronização</h3>
+                <p>
+                    <button type="button" id="postpro-sync-profile" class="button button-secondary">
+                        <span class="dashicons dashicons-update" style="vertical-align: text-bottom;"></span>
+                        Sincronizar Perfil do Site
+                    </button>
+                    <span class="description" style="margin-left: 10px;">
+                        Envia categorias, tags e posts recentes para o PostPro analisar o conteúdo.
+                    </span>
+                </p>
+                <div id="postpro-sync-result" style="display: none; margin-top: 10px;"></div>
+                
                 <div id="postpro-connection-result" style="display: none;"></div>
             </div>
             
@@ -288,6 +313,68 @@ class PostPro_Plugin {
                 </div>
                 
                 <div id="postpro-upload-result" style="display: none;"></div>
+            </div>
+            
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+    
+    // =========================================================================
+    // Editorial Plan Page
+    // =========================================================================
+    
+    public function render_editorial_plan_page() {
+        $license_key = get_option('postpro_license_key', '');
+        ?>
+        <div class="wrap postpro-wrap">
+            <h1>Plano Editorial</h1>
+            
+            <?php if (empty($license_key)): ?>
+            <div class="notice notice-error">
+                <p>Configure sua License Key antes de acessar o plano editorial.</p>
+            </div>
+            <?php else: ?>
+            
+            <div class="postpro-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none;">Calendário de Posts (30 dias)</h2>
+                    <button type="button" id="postpro-refresh-plan" class="button button-secondary">
+                        <span class="dashicons dashicons-image-rotate"></span> Atualizar
+                    </button>
+                </div>
+                
+                <div id="postpro-plan-loading" style="text-align: center; padding: 40px;">
+                    <span class="spinner is-active" style="float: none; margin: 0;"></span> Carregando plano...
+                </div>
+                
+                <div id="postpro-plan-content" style="display: none;">
+                    <div id="postpro-plan-meta" style="margin-bottom: 20px; padding: 10px; background: #f0f6fc; border-radius: 4px;">
+                        <!-- Status and dates injected via JS -->
+                    </div>
+                    
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th width="50">Dia</th>
+                                <th>Título / Keyword</th>
+                                <th width="150">Status</th>
+                                <th width="120">Agendado</th>
+                                <th width="100">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postpro-plan-items">
+                            <!-- Items injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="postpro-plan-empty" style="display: none; text-align: center; padding: 40px;">
+                    <p>Nenhum plano editorial ativo no momento.</p>
+                    <p class="description">Gere um novo plano no painel do PostPro.</p>
+                </div>
+                
+                <div id="postpro-plan-error" style="display: none;" class="notice notice-error inline"></div>
             </div>
             
             <?php endif; ?>
@@ -642,6 +729,53 @@ class PostPro_Plugin {
             wp_send_json_success($data);
         } else {
             wp_send_json_error($data['error'] ?? 'Upload failed');
+        }
+    }
+    
+    public function ajax_sync_profile() {
+        $this->proxy_api_request('POST', '/project/sync-profile');
+    }
+    
+    public function ajax_get_plan() {
+        $this->proxy_api_request('GET', '/project/editorial-plan');
+    }
+    
+    private function proxy_api_request($method, $endpoint, $body = array()) {
+        check_ajax_referer('postpro_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+        
+        $license_key = get_option('postpro_license_key', '');
+        $api_url = get_option('postpro_api_url', POSTPRO_API_BASE);
+        
+        $args = array(
+            'headers' => array(
+                'X-License-Key' => $license_key,
+            ),
+            'method' => $method,
+            'timeout' => 30,
+        );
+        
+        if (!empty($body)) {
+            $args['body'] = json_encode($body);
+            $args['headers']['Content-Type'] = 'application/json';
+        }
+        
+        $response = wp_remote_request($api_url . $endpoint, $args);
+        
+        if (is_wp_error($response)) {
+            wp_send_json_error('Connection failed: ' . $response->get_error_message());
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        $response_body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if ($status_code >= 200 && $status_code < 300) {
+            wp_send_json_success($response_body);
+        } else {
+            wp_send_json_error($response_body['error'] ?? 'Unknown API error');
         }
     }
 }

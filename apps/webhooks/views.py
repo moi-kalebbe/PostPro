@@ -12,8 +12,8 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.conf import settings
 
 from apps.projects.models import Project
-from apps.automation.models import Post, BatchJob
-from apps.automation.tasks import process_csv_batch, publish_to_wordpress, regenerate_post_step
+from apps.automation.models import Post, BatchJob, EditorialPlan
+from apps.automation.tasks import process_csv_batch, publish_to_wordpress, regenerate_post_step, sync_site_profile
 from .middleware import license_required
 
 logger = logging.getLogger(__name__)
@@ -374,3 +374,82 @@ def debug_batch_jobs(request):
         "jobs": jobs_data,
     })
 
+
+@require_POST
+@csrf_exempt
+@license_required
+def sync_site_profile_view(request):
+    """
+    Trigger site profile synchronization.
+    
+    POST /api/v1/project/sync-profile
+    Headers: X-License-Key
+    """
+    project = request.project
+    
+    # Trigger task
+    sync_site_profile.delay(str(project.id))
+    
+    return JsonResponse({
+        "success": True,
+        "message": "Synchronization started"
+    })
+
+
+@require_GET
+@csrf_exempt
+@license_required
+def editorial_plan_view(request):
+    """
+    Get the latest active or pending editorial plan.
+    
+    GET /api/v1/project/editorial-plan
+    Headers: X-License-Key
+    """
+    project = request.project
+    
+    # Get latest active or pending plan
+    plan = EditorialPlan.objects.filter(
+        project=project
+    ).exclude(
+        status=EditorialPlan.Status.REJECTED
+    ).order_by('-created_at').first()
+    
+    if not plan:
+        return JsonResponse({
+            "success": True,
+            "has_plan": False,
+            "message": "No active plan found"
+        })
+    
+    # Get items
+    items = plan.items.all().order_by('day_index')
+    
+    items_data = []
+    for item in items:
+        # Determine status color/text for UI
+        status_label = item.get_status_display()
+        
+        items_data.append({
+            "id": str(item.id),
+            "day": item.day_index,
+            "title": item.title,
+            "keyword": item.keyword_focus,
+            "status": item.status,
+            "status_label": status_label,
+            "scheduled_date": item.scheduled_date.isoformat() if item.scheduled_date else None,
+            "post_id": str(item.post.id) if item.post else None,
+        })
+    
+    return JsonResponse({
+        "success": True,
+        "has_plan": True,
+        "plan": {
+            "id": str(plan.id),
+            "status": plan.status,
+            "status_label": plan.get_status_display(),
+            "start_date": plan.start_date.isoformat(),
+            "created_at": plan.created_at.isoformat(),
+        },
+        "items": items_data
+    })
