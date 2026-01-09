@@ -42,7 +42,7 @@ function closeModal(modalId) {
 }
 
 // Close modal on backdrop click
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.classList.contains('modal-backdrop')) {
         e.target.classList.remove('active');
         document.body.style.overflow = '';
@@ -50,7 +50,7 @@ document.addEventListener('click', function(e) {
 });
 
 // Close modal on Escape key
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         const activeModal = document.querySelector('.modal-backdrop.active');
         if (activeModal) {
@@ -63,31 +63,31 @@ document.addEventListener('keydown', function(e) {
 // File Upload
 function initFileUpload() {
     const fileUploads = document.querySelectorAll('.file-upload');
-    
+
     fileUploads.forEach(upload => {
         const input = upload.querySelector('input[type="file"]');
-        
+
         upload.addEventListener('click', () => input.click());
-        
+
         upload.addEventListener('dragover', (e) => {
             e.preventDefault();
             upload.classList.add('drag-over');
         });
-        
+
         upload.addEventListener('dragleave', () => {
             upload.classList.remove('drag-over');
         });
-        
+
         upload.addEventListener('drop', (e) => {
             e.preventDefault();
             upload.classList.remove('drag-over');
-            
+
             if (e.dataTransfer.files.length) {
                 input.files = e.dataTransfer.files;
                 input.dispatchEvent(new Event('change'));
             }
         });
-        
+
         input.addEventListener('change', () => {
             if (input.files.length) {
                 const fileName = input.files[0].name;
@@ -123,14 +123,14 @@ function copyToClipboard(text, button) {
 // Toast Notifications
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container') || createToastContainer();
-    
+
     const toast = document.createElement('div');
     toast.className = `alert alert-${type}`;
     toast.style.cssText = 'margin-bottom: 0.5rem; animation: slideIn 0.3s ease;';
     toast.textContent = message;
-    
+
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);
@@ -157,24 +157,24 @@ async function apiRequest(url, options = {}) {
     const defaults = {
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': getCookie('postpro_csrftoken'),
         },
     };
-    
+
     const config = {
         ...defaults,
         ...options,
         headers: { ...defaults.headers, ...options.headers },
     };
-    
+
     try {
         const response = await fetch(url, config);
         const data = await response.json();
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Request failed');
         }
-        
+
         return data;
     } catch (error) {
         showToast(error.message, 'error');
@@ -204,7 +204,7 @@ function pollBatchStatus(batchId, callback, interval = 2000) {
         try {
             const data = await apiRequest(`/automation/batches/${batchId}/status/`);
             callback(data);
-            
+
             if (data.status === 'processing') {
                 setTimeout(poll, interval);
             }
@@ -212,7 +212,7 @@ function pollBatchStatus(batchId, callback, interval = 2000) {
             console.error('Polling error:', error);
         }
     };
-    
+
     poll();
 }
 
@@ -246,10 +246,10 @@ function debounce(func, wait) {
 // Initialize Search with Debounce
 function initSearch() {
     const searchInputs = document.querySelectorAll('[data-search]');
-    
+
     searchInputs.forEach(input => {
         const form = input.closest('form');
-        
+
         input.addEventListener('input', debounce(() => {
             if (form) {
                 form.submit();

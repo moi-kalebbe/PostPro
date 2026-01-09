@@ -21,7 +21,8 @@
                     <select name="project" class="form-select" onchange="this.form.submit()">
                         <option value="">Todos os projetos</option>
                         {% for project in projects %}
-                        <option value="{{ project.id }}" {% if project_filter == project.id|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
+                        <option value="{{ project.id }}" {% if project_filter==project.id|stringformat:'s' %}selected{%
+                            endif %}>{{ project.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -31,7 +32,7 @@
                     <select name="status" class="form-select" onchange="this.form.submit()">
                         <option value="">Todos</option>
                         {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}
+                        <option value="{{ value }}" {% if status_filter==value %}selected{% endif %}>{{ label }}
                         </option>
                         {% endfor %}
                     </select>
@@ -218,7 +219,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCookie('postpro_csrftoken'),
                 },
             });
             const data = await response.json();
@@ -240,7 +241,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCookie('postpro_csrftoken'),
                 },
                 body: JSON.stringify({ step: step }),
             });
@@ -286,7 +287,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCookie('postpro_csrftoken'),
                 },
                 body: JSON.stringify({ delete_from_wordpress: deleteFromWp }),
             });
@@ -368,7 +369,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCookie('postpro_csrftoken'),
                 },
                 body: JSON.stringify({
                     post_ids: postIds,
