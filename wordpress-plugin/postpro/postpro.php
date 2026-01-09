@@ -115,32 +115,7 @@ class PostPro_Plugin {
                 <div id="postpro-sync-result" class="postpro-result" style="display:none;"></div>
             </div>
 
-            <!-- Upload Card -->
-            <div class="card postpro-card">
-                <h2>Fazer Upload de CSV (Keywords)</h2>
-                <p>Envie um arquivo CSV com suas palavras-chave para gerar posts em lote.</p>
-                <p><a href="<?php echo plugin_dir_url(__FILE__) . 'assets/template.csv'; ?>" download>Baixar modelo CSV</a></p>
-                
-                <form id="postpro-upload-form" enctype="multipart/form-data">
-                    <input type="file" name="csv_file" accept=".csv" required />
-                    <br><br>
-                    <label>
-                        <input type="checkbox" name="dry_run" value="1"> 
-                        Simulação (não gera posts, apenas calcula custo)
-                    </label>
-                    <br><br>
-                    <button type="submit" id="postpro-submit-upload" class="button button-primary">Iniciar Processamento</button>
-                </form>
-                
-                <div id="postpro-upload-progress" style="display:none;">
-                    <div class="postpro-progress-bar">
-                        <div class="postpro-progress-fill" style="width: 0%"></div>
-                    </div>
-                    <div class="postpro-progress-text">0 / 0 keywords</div>
-                </div>
-                
-                <div id="postpro-upload-result" class="postpro-result" style="display:none;"></div>
-            </div>
+            <!-- Upload Card Removed as per user request (Manual Keywords only) -->
         </div>
         <?php
     }
