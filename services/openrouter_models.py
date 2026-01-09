@@ -105,7 +105,7 @@ class OpenRouterModelsService:
         
         image_models = [
             model for model in all_models
-            if 'image' in model.get('modalities', [])
+            if 'image' in model.get('architecture', {}).get('output_modalities', [])
         ]
         
         logger.info(f"Found {len(image_models)} image models")
