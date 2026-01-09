@@ -512,7 +512,7 @@ def generate_editorial_plan(self, plan_id: str):
     api_key = agency.get_openrouter_key()
     if not api_key:
         logger.error(f"No OpenRouter API key for agency {agency.name}")
-        plan.status = EditorialPlan.Status.FAILED
+        plan.status = EditorialPlan.Status.REJECTED
         plan.save()
         return
     
@@ -539,7 +539,7 @@ def generate_editorial_plan(self, plan_id: str):
         
     except Exception as e:
         logger.error(f"Error generating editorial plan {plan_id}: {e}")
-        plan.status = EditorialPlan.Status.FAILED
+        plan.status = EditorialPlan.Status.REJECTED
         plan.save()
         raise
 
