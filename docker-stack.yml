@@ -103,7 +103,7 @@ services:
       - REDIS_URL=redis://postpro_redis:6379/0
       - CELERY_BROKER_URL=redis://postpro_redis:6379/0
       - CELERY_RESULT_BACKEND=redis://postpro_redis:6379/0
-      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE
+      - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE=
       - TZ=America/Sao_Paulo
 
     deploy:
