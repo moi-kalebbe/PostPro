@@ -203,7 +203,16 @@ Requirements:
 5. Use Portuguese (Brazil).
 6. NEVER repeat topics from the AVOID list above.
 
-Return ONLY valid JSON matching the schema."""
+6. NEVER repeat topics from the AVOID list above.
+
+Return ONLY valid JSON matching the schema.
+The JSON must have a root key "items" containing the list of plan items.
+Example:
+{
+  "items": [
+    { "day": 1, "title": "...", ... }
+  ]
+}"""
         
         # Call LLM
         messages = [{"role": "user", "content": prompt}]

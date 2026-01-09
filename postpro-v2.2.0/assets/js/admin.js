@@ -259,7 +259,7 @@
                         // ACTION BUTTONS HEADER
                         var $actionsContainer = $('#postpro-plan-actions');
                         if ($actionsContainer.length === 0) {
-                            $content.before('<div id="postpro-plan-actions" style="margin-bottom: 15px;"></div>');
+                            $container.before('<div id="postpro-plan-actions" style="margin-bottom: 15px;"></div>');
                             $actionsContainer = $('#postpro-plan-actions');
                         }
 
