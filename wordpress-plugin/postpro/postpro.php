@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: PostPro - AI Content Integration
- * Plugin URI: https://postpro.app
- * Description: Integrates WordPress with PostPro SaaS for AI-powered content generation
- * Version: 1.0.0
- * Author: PostPro
- * Author URI: https://postpro.app
+ * Plugin URI: https://postpro.nuvemchat.com
+ * Description: Integrates WordPress with PostPro SaaS for AI-powered content generation with editorial pipeline and SEO automation
+ * Version: 2.0.0
+ * Author: Moisés Kalebbe
+ * Author URI: https://postpro.nuvemchat.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: postpro
@@ -15,10 +15,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('POSTPRO_VERSION', '1.0.1');
+define('POSTPRO_VERSION', '2.0.0');
 define('POSTPRO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POSTPRO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POSTPRO_API_BASE', 'https://postpro.nuvemchat.com/api/v1');
+
+// Load SEO modules
+require_once POSTPRO_PLUGIN_DIR . 'includes/seo-router.php';
 
 class PostPro_Plugin {
     
@@ -317,9 +320,37 @@ class PostPro_Plugin {
     
     public function receive_post($request) {
         $data = $request->get_json_params();
-        $idempotency_key = $request->get_header('X-Idempotency-Key');
         
-        // Check idempotency
+        // Get idempotency keys (support both methods)
+        $idempotency_key = $request->get_header('X-Idempotency-Key');
+        $external_id = $request->get_header('X-External-Id');
+        
+        // Prefer external_id for idempotency (more robust)
+        if (!$external_id && !empty($data['external_id'])) {
+            $external_id = $data['external_id'];
+        }
+        
+        // Check idempotency by external_id (primary method)
+        if ($external_id) {
+            $existing = get_posts(array(
+                'meta_key' => '_postpro_external_id',
+                'meta_value' => $external_id,
+                'post_type' => 'post',
+                'posts_per_page' => 1,
+            ));
+            
+            if (!empty($existing)) {
+                $post = $existing[0];
+                return array(
+                    'success' => true,
+                    'post_id' => $post->ID,
+                    'edit_url' => get_edit_post_link($post->ID, 'db'),
+                    'message' => 'Post already exists (external_id match)',
+                );
+            }
+        }
+        
+        // Fallback: Check idempotency by legacy key
         if ($idempotency_key) {
             $existing = get_posts(array(
                 'meta_key' => '_postpro_idempotency_key',
@@ -344,13 +375,32 @@ class PostPro_Plugin {
             return new WP_Error('invalid_data', 'Title and content are required', array('status' => 400));
         }
         
+        // Determine post status (draft/future/publish)
+        $post_status = !empty($data['post_status']) ? sanitize_text_field($data['post_status']) : 'draft';
+        
+        // Handle scheduled posts
+        $post_date = '';
+        $post_date_gmt = '';
+        
+        if ($post_status === 'future' && !empty($data['scheduled_at'])) {
+            $scheduled_at = sanitize_text_field($data['scheduled_at']);
+            $post_date = date('Y-m-d H:i:s', strtotime($scheduled_at));
+            $post_date_gmt = gmdate('Y-m-d H:i:s', strtotime($scheduled_at));
+        }
+        
         // Create post
         $post_data = array(
             'post_title' => sanitize_text_field($data['title']),
             'post_content' => wp_kses_post($data['content']),
-            'post_status' => 'draft',
+            'post_status' => $post_status,
             'post_type' => 'post',
         );
+        
+        // Add scheduled date if applicable
+        if ($post_date) {
+            $post_data['post_date'] = $post_date;
+            $post_data['post_date_gmt'] = $post_date_gmt;
+        }
         
         $post_id = wp_insert_post($post_data);
         
@@ -358,7 +408,11 @@ class PostPro_Plugin {
             return new WP_Error('insert_failed', $post_id->get_error_message(), array('status' => 500));
         }
         
-        // Save meta
+        // Save PostPro meta
+        if ($external_id) {
+            update_post_meta($post_id, '_postpro_external_id', sanitize_text_field($external_id));
+        }
+        
         if ($idempotency_key) {
             update_post_meta($post_id, '_postpro_idempotency_key', sanitize_text_field($idempotency_key));
         }
@@ -367,8 +421,18 @@ class PostPro_Plugin {
             update_post_meta($post_id, '_postpro_post_id', sanitize_text_field($data['postpro_post_id']));
         }
         
-        // Meta description (Yoast/RankMath)
-        if (!empty($data['meta_description'])) {
+        // Apply SEO data via SEO Router
+        if (!empty($data['seo']) && is_array($data['seo'])) {
+            $seo_data = PostPro_SEO_Router::sanitize_seo_data($data['seo']);
+            $seo_results = PostPro_SEO_Router::apply_seo_data($post_id, $seo_data);
+            
+            // Log which SEO plugins were updated
+            $active_seo = PostPro_SEO_Router::get_active_plugins();
+            update_post_meta($post_id, '_postpro_seo_applied', $active_seo);
+        }
+        
+        // Fallback: Legacy meta description support
+        if (empty($data['seo']) && !empty($data['meta_description'])) {
             $meta_desc = sanitize_text_field($data['meta_description']);
             update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_desc);
             update_post_meta($post_id, 'rank_math_description', $meta_desc);
@@ -383,6 +447,9 @@ class PostPro_Plugin {
             'success' => true,
             'post_id' => $post_id,
             'edit_url' => get_edit_post_link($post_id, 'db'),
+            'post_status' => $post_status,
+            'scheduled_at' => $post_date ? $post_date : null,
+            'seo_applied' => !empty($active_seo) ? $active_seo : array(),
         );
     }
     

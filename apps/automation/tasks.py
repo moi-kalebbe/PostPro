@@ -482,3 +482,227 @@ def publish_to_wordpress(self, post_id: str):
             error = result.get("error", "Unknown error")
             logger.error(f"Failed to publish post {post_id}: {error}")
             raise Exception(error)
+@shared_task(bind=True, max_retries=3)
+def generate_editorial_plan(self, plan_id: str):
+    """
+    Generate titles for an editorial plan using AI.
+    
+    Args:
+        plan_id: UUID of the EditorialPlan
+    """
+    from apps.automation.models import EditorialPlan
+    from services.editorial_pipeline import EditorialPipelineService
+    from services.openrouter import OpenRouterService
+    from services.site_profile import SiteProfileService
+    
+    logger.info(f"Generating editorial plan {plan_id}")
+    
+    try:
+        plan = EditorialPlan.objects.select_related(
+            'project', 'project__agency'
+        ).get(id=plan_id)
+    except EditorialPlan.DoesNotExist:
+        logger.error(f"EditorialPlan {plan_id} not found")
+        return
+    
+    project = plan.project
+    agency = project.agency
+    
+    # Get OpenRouter API key
+    api_key = agency.get_openrouter_key()
+    if not api_key:
+        logger.error(f"No OpenRouter API key for agency {agency.name}")
+        plan.status = EditorialPlan.Status.FAILED
+        plan.save()
+        return
+    
+    try:
+        # Initialize services
+        openrouter = OpenRouterService(api_key)
+        pipeline = EditorialPipelineService(project, openrouter)
+        
+        # Get site profile
+        site_profile_service = SiteProfileService(project)
+        site_profile = site_profile_service.get_or_create_profile()
+        
+        # Generate titles
+        pipeline._generate_titles(plan, site_profile)
+        
+        # Update status
+        plan.status = EditorialPlan.Status.PENDING_APPROVAL
+        plan.save()
+        
+        logger.info(f"Editorial plan {plan_id} generated successfully")
+        
+    except Exception as e:
+        logger.error(f"Error generating editorial plan {plan_id}: {e}")
+        plan.status = EditorialPlan.Status.FAILED
+        plan.save()
+        raise
+
+
+@shared_task(bind=True, max_retries=3)
+def process_scheduled_posts():
+    """
+    Process scheduled editorial plan items that are due today.
+    Creates posts for items with scheduled_date = today.
+    """
+    from apps.automation.models import EditorialPlanItem
+    from datetime import date
+    
+    logger.info("Processing scheduled editorial plan items")
+    
+    # Get items scheduled for today
+    today = date.today()
+    items = EditorialPlanItem.objects.filter(
+        scheduled_date=today,
+        status=EditorialPlanItem.Status.SCHEDULED,
+        post__isnull=True
+    ).select_related('plan', 'plan__project', 'plan__project__agency')
+    
+    logger.info(f"Found {items.count()} items to process")
+    
+    for item in items:
+        try:
+            # Create post from editorial plan item
+            generate_post_from_plan_item.delay(str(item.id))
+            
+            # Update item status
+            item.status = EditorialPlanItem.Status.GENERATING
+            item.save()
+            
+        except Exception as e:
+            logger.error(f"Error scheduling post for item {item.id}: {e}")
+
+
+@shared_task(bind=True, max_retries=3)
+def generate_post_from_plan_item(self, item_id: str):
+    """
+    Generate a full post from an editorial plan item.
+    
+    Args:
+        item_id: UUID of the EditorialPlanItem
+    """
+    from apps.automation.models import EditorialPlanItem, Post
+    from apps.ai_engine.agents import run_full_pipeline
+    from services.openrouter import OpenRouterService
+    
+    logger.info(f"Generating post from plan item {item_id}")
+    
+    try:
+        item = EditorialPlanItem.objects.select_related(
+            'plan', 'plan__project', 'plan__project__agency'
+        ).get(id=item_id)
+    except EditorialPlanItem.DoesNotExist:
+        logger.error(f"EditorialPlanItem {item_id} not found")
+        return
+    
+    project = item.plan.project
+    agency = project.agency
+    
+    # Get OpenRouter API key
+    api_key = agency.get_openrouter_key()
+    if not api_key:
+        logger.error(f"No OpenRouter API key for agency {agency.name}")
+        item.status = EditorialPlanItem.Status.FAILED
+        item.save()
+        return
+    
+    try:
+        # Create Post instance
+        post = Post.objects.create(
+            project=project,
+            keyword=item.keyword_focus,
+            title=item.title,
+            external_id=item.external_id,
+            status=Post.Status.GENERATING,
+            post_status='future',
+            scheduled_at=item.scheduled_date
+        )
+        
+        # Link to plan item
+        item.post = post
+        item.save()
+        
+        logger.info(f"Created post {post.id} for item {item.id}")
+        
+        # Run full AI pipeline
+        openrouter = OpenRouterService(api_key)
+        
+        text_model = project.get_text_model()
+        image_model = project.get_image_model()
+        
+        # Run pipeline
+        result = run_full_pipeline(
+            keyword=item.keyword_focus,
+            openrouter_service=openrouter,
+            text_model=text_model,
+            image_model=image_model,
+            project=project
+        )
+        
+        # Update post with generated content
+        post.title = result.get('title', item.title)
+        post.content = result.get('content', '')
+        post.meta_description = result.get('meta_description', '')
+        post.featured_image_url = result.get('featured_image_url', '')
+        post.research_data = result.get('research_data', {})
+        post.strategy_data = result.get('strategy_data', {})
+        
+        # Generate SEO data
+        post.seo_data = {
+            'keyword': item.keyword_focus,
+            'seo_title': result.get('title', item.title),
+            'seo_description': result.get('meta_description', ''),
+            'cluster': item.cluster,
+            'search_intent': item.search_intent
+        }
+        
+        post.status = Post.Status.APPROVED
+        post.save()
+        
+        # Update item status
+        item.status = EditorialPlanItem.Status.COMPLETED
+        item.save()
+        
+        logger.info(f"Post {post.id} generated successfully")
+        
+        # Import and call publish task
+        from apps.automation.tasks import publish_to_wordpress
+        publish_to_wordpress.delay(str(post.id))
+        
+    except Exception as e:
+        logger.error(f"Error generating post from item {item_id}: {e}")
+        item.status = EditorialPlanItem.Status.FAILED
+        item.save()
+        raise
+
+
+@shared_task(bind=True, max_retries=3)
+def sync_site_profile(self, project_id: str):
+    """
+    Sync WordPress site profile for a project.
+    
+    Args:
+        project_id: UUID of the Project
+    """
+    from apps.projects.models import Project
+    from services.site_profile import SiteProfileService
+    
+    logger.info(f"Syncing site profile for project {project_id}")
+    
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        logger.error(f"Project {project_id} not found")
+        return
+    
+    try:
+        service = SiteProfileService(project)
+        profile = service.get_or_create_profile(force_refresh=True)
+        
+        logger.info(f"Site profile synced for {project.name}: {profile.site_name}")
+        
+    except Exception as e:
+        logger.error(f"Error syncing site profile for project {project_id}: {e}")
+        raise

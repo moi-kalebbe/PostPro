@@ -141,6 +141,18 @@ class Post(models.Model):
         default=Status.GENERATING
     )
     
+    # NEW: External ID for idempotency
+    external_id = models.CharField(max_length=100, unique=True, db_index=True, null=True, blank=True)
+    # Format: {site_id}_{plan_id}_day_{day_index} OR {batch_id}_row_{index}
+    
+    # NEW: SEO data
+    seo_data = models.JSONField(default=dict, blank=True)
+    # {keyword, seo_title, seo_description, internal_link, faq, article_type, blog_posting_data}
+    
+    # NEW: Scheduled publishing
+    post_status = models.CharField(max_length=20, default='draft')  # draft/future/publish
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    
     # WordPress integration
     wordpress_post_id = models.PositiveIntegerField(null=True, blank=True)
     wordpress_idempotency_key = models.CharField(max_length=64, blank=True, null=True)
@@ -375,3 +387,282 @@ class ActivityLog(models.Model):
     def __str__(self):
         actor = self.actor_user.email if self.actor_user else 'System'
         return f"{actor}: {self.action}"
+
+
+class SiteProfile(models.Model):
+    """
+    Cached analysis of a WordPress site's existing content.
+    Used for anti-cannibalization and context-aware content generation.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='site_profiles'
+    )
+    
+    # Site metadata
+    home_url = models.URLField(max_length=500)
+    site_name = models.CharField(max_length=255)
+    site_description = models.TextField(blank=True)
+    language = models.CharField(max_length=10, default='pt-BR')
+    
+    # Content analysis
+    categories = models.JSONField(default=list, blank=True)  # [{name, slug, count}]
+    tags = models.JSONField(default=list, blank=True)
+    recent_posts = models.JSONField(default=list, blank=True)  # Last 20 posts
+    main_pages = models.JSONField(default=list, blank=True)  # Top 10 pages
+    sitemap_url = models.URLField(max_length=500, blank=True)
+    
+    # AI-generated summary
+    content_themes = models.JSONField(default=list, blank=True)  # Detected themes/topics
+    tone_analysis = models.TextField(blank=True)
+    target_audience = models.TextField(blank=True)
+    
+    # Metadata
+    last_synced_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'site_profiles'
+        verbose_name = 'Site Profile'
+        verbose_name_plural = 'Site Profiles'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.site_name} ({self.project.name})"
+
+
+class TrendPack(models.Model):
+    """
+    Cached trend research from Perplexity Sonar.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agency = models.ForeignKey(
+        'agencies.Agency',
+        on_delete=models.CASCADE,
+        related_name='trend_packs'
+    )
+    
+    # Input
+    keywords = models.JSONField(default=list)
+    recency_days = models.PositiveIntegerField(default=7)  # 7 or 30
+    
+    # Perplexity response
+    model_used = models.CharField(max_length=100)  # perplexity/sonar or sonar-pro-search
+    insights = models.JSONField(default=list)  # 10-30 trend insights
+    # Each insight: {title, summary, references: [{title, url, date}], relevance_score}
+    
+    # Cost tracking
+    tokens_used = models.PositiveIntegerField(default=0)
+    cost = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    
+    # Cache
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()  # Auto-expire after 7 days
+    
+    class Meta:
+        db_table = 'trend_packs'
+        verbose_name = 'Trend Pack'
+        verbose_name_plural = 'Trend Packs'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"TrendPack {self.id} - {len(self.keywords)} keywords"
+
+
+class EditorialPlan(models.Model):
+    """
+    30-day editorial plan with approval workflow.
+    """
+    class Status(models.TextChoices):
+        GENERATING = 'generating', 'Generating'
+        PENDING_APPROVAL = 'pending_approval', 'Pending Approval'
+        APPROVED = 'approved', 'Approved'
+        ACTIVE = 'active', 'Active'
+        COMPLETED = 'completed', 'Completed'
+        REJECTED = 'rejected', 'Rejected'
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='editorial_plans'
+    )
+    site_profile = models.ForeignKey(
+        SiteProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='editorial_plans'
+    )
+    
+    # Input keywords (5-10)
+    keywords = models.JSONField(default=list)
+    
+    # Trend research
+    trend_pack = models.ForeignKey(
+        TrendPack,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='editorial_plans'
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.GENERATING
+    )
+    
+    # Approval
+    approved_by = models.ForeignKey(
+        'accounts.User',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='approved_plans'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    
+    # Publishing schedule
+    start_date = models.DateField()
+    posts_per_day = models.PositiveIntegerField(default=1)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'editorial_plans'
+        verbose_name = 'Editorial Plan'
+        verbose_name_plural = 'Editorial Plans'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Plan {self.id} - {self.project.name} ({self.status})"
+
+
+class EditorialPlanItem(models.Model):
+    """
+    Individual title/topic in a 30-day plan.
+    """
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SCHEDULED = 'scheduled', 'Scheduled'
+        GENERATING = 'generating', 'Generating'
+        COMPLETED = 'completed', 'Completed'
+        FAILED = 'failed', 'Failed'
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(
+        EditorialPlan,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+    
+    # Generated title & metadata
+    day_index = models.PositiveIntegerField()  # 1-30
+    title = models.CharField(max_length=500)
+    keyword_focus = models.CharField(max_length=200)
+    cluster = models.CharField(max_length=100, blank=True)  # Topic cluster
+    search_intent = models.CharField(max_length=50, blank=True)  # informational/commercial/navigational
+    
+    # Trend connection
+    trend_references = models.JSONField(default=list, blank=True)  # Links to TrendPack insights
+    
+    # Scheduling
+    scheduled_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+    
+    # Link to generated post
+    post = models.ForeignKey(
+        Post,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='editorial_plan_item'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    external_id = models.CharField(max_length=100, unique=True, db_index=True)
+    # Format: {site_id}_{plan_id}_day_{day_index}
+    
+    class Meta:
+        db_table = 'editorial_plan_items'
+        verbose_name = 'Editorial Plan Item'
+        verbose_name_plural = 'Editorial Plan Items'
+        ordering = ['plan', 'day_index']
+        indexes = [
+            models.Index(fields=['plan', 'day_index']),
+            models.Index(fields=['external_id']),
+        ]
+    
+    def __str__(self):
+        return f"Day {self.day_index}: {self.title[:50]}"
+    
+    def generate_external_id(self):
+        """Generate external_id for idempotency."""
+        project_id = str(self.plan.project_id)
+        plan_id = str(self.plan.id)
+        return f"{project_id}_{plan_id}_day_{self.day_index}"
+
+
+class AIModelPolicy(models.Model):
+    """
+    Agency-level AI model configuration per stage.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agency = models.ForeignKey(
+        'agencies.Agency',
+        on_delete=models.CASCADE,
+        related_name='model_policies'
+    )
+    
+    # Preset category (optional, for UI convenience)
+    preset_category = models.CharField(max_length=20, blank=True)  # free/budget/premium
+    
+    # Text models by stage
+    planning_trends_model = models.CharField(max_length=100, default='perplexity/sonar')
+    planning_titles_model = models.CharField(max_length=100, default='mistralai/mistral-nemo')
+    outline_model = models.CharField(max_length=100, default='mistralai/mistral-nemo')
+    article_model = models.CharField(max_length=100, default='openai/gpt-oss-120b')
+    seo_model = models.CharField(max_length=100, default='openai/gpt-5-nano')
+    qa_model = models.CharField(max_length=100, default='openai/gpt-5-nano')
+    rewrite_model = models.CharField(max_length=100, blank=True)  # For reprocessing
+    
+    # Perplexity config
+    max_search_requests_per_plan = models.PositiveIntegerField(default=3)
+    trends_recency_days = models.PositiveIntegerField(default=7)  # 7 or 30
+    
+    # Image generation
+    image_provider = models.CharField(max_length=20, default='openrouter')  # openrouter | pollinations
+    image_model_openrouter = models.CharField(max_length=100, blank=True)
+    pollinations_model = models.CharField(max_length=100, blank=True)
+    pollinations_width = models.PositiveIntegerField(default=1920)
+    pollinations_height = models.PositiveIntegerField(default=1080)
+    pollinations_safe = models.BooleanField(default=True)
+    pollinations_private = models.BooleanField(default=True)
+    pollinations_enhance = models.BooleanField(default=False)
+    pollinations_nologo = models.BooleanField(default=True)
+    
+    # Metadata
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'ai_model_policies'
+        verbose_name = 'AI Model Policy'
+        verbose_name_plural = 'AI Model Policies'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Policy for {self.agency.name} ({self.preset_category or 'custom'})"
