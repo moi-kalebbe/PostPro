@@ -432,3 +432,96 @@ def batches_list_view(request):
     }
     
     return render(request, 'automation/batches_list.html', context)
+
+
+@login_required
+@agency_required
+@require_POST
+def batch_delete_view(request, batch_id):
+    """
+    Delete a single batch job.
+    Does NOT delete associated posts (they are set to null).
+    """
+    from .models import ActivityLog
+    
+    batch = get_object_or_404(
+        BatchJob,
+        id=batch_id,
+        project__agency=request.user.agency
+    )
+    
+    # Store info for log
+    project = batch.project
+    batch_str = str(batch)
+    
+    # Log activity
+    ActivityLog.objects.create(
+        agency=project.agency,
+        project=project,
+        actor_user=request.user,
+        action="BATCH_DELETED",
+        entity_type="BatchJob",
+        entity_id=str(batch.id),
+        metadata={
+            "original_filename": batch.original_filename,
+            "status": batch.status,
+        }
+    )
+    
+    batch.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Job deletado com sucesso (posts mantidos)'
+    })
+
+
+@login_required
+@agency_required
+@require_POST
+def batches_bulk_delete_view(request):
+    """
+    Delete multiple batch jobs.
+    """
+    from .models import ActivityLog
+    
+    data = json.loads(request.body) if request.body else {}
+    batch_ids = data.get('batch_ids', [])
+    
+    if not batch_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'Nenhum job selecionado'
+        }, status=400)
+    
+    agency = request.user.agency
+    
+    # Get batches
+    batches = BatchJob.objects.filter(
+        id__in=batch_ids,
+        project__agency=agency
+    ).select_related('project')
+    
+    deleted_count = 0
+    
+    for batch in batches:
+        # Log activity
+        ActivityLog.objects.create(
+            agency=agency,
+            project=batch.project,
+            actor_user=request.user,
+            action="BATCH_DELETED",
+            entity_type="BatchJob",
+            entity_id=str(batch.id),
+            metadata={
+                "bulk_delete": True,
+                "original_filename": batch.original_filename
+            }
+        )
+        batch.delete()
+        deleted_count += 1
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'{deleted_count} job(s) deletado(s)',
+    })

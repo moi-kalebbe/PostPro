@@ -20,6 +20,8 @@ urlpatterns = [
     # Batches
     path('batches/', views.batches_list_view, name='batches_list'),
     path('batches/<uuid:batch_id>/status/', views.batch_status_view, name='batch_status'),
+    path('batches/<uuid:batch_id>/delete/', views.batch_delete_view, name='batch_delete'),
+    path('batches/bulk-delete/', views.batches_bulk_delete_view, name='batches_bulk_delete'),
     
     # Batch upload (project-scoped)
     path('projects/<uuid:project_id>/batch-upload/', views.batch_upload_submit_view, name='batch_upload_submit'),

@@ -1,4 +1,9 @@
-{% extends 'base.html' %}
+import os
+
+target_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\batches_list.html'
+temp_file = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\automation\batches_list_v2.html'
+
+content = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Jobs - PostPro{% endblock %}
@@ -309,3 +314,15 @@
 {% endblock %}
 
 {% endblock %}
+"""
+
+# Write to temp file
+with open(temp_file, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+# Force replace
+if os.path.exists(target_file):
+    os.remove(target_file)
+
+os.rename(temp_file, target_file)
+print(f"File replaced successfully. New size: {os.path.getsize(target_file)}")
