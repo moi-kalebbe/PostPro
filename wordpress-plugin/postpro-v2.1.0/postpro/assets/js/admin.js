@@ -11,7 +11,6 @@
         initCopyButtons();
         initSyncProfile();
         initEditorialPlan();
-        initKeywordsForm();
     });
 
     // Test Connection
@@ -295,62 +294,6 @@
             complete: function () {
                 $loading.hide();
             }
-        });
-    }
-
-    // Keywords Form Handler
-    function initKeywordsForm() {
-        $('#postpro-keywords-form').on('submit', function (e) {
-            e.preventDefault();
-
-            var $form = $(this);
-            var $btn = $form.find('#postpro-save-keywords');
-            var $result = $('#postpro-keywords-result');
-
-            var keywordsValues = $form.find('input[name="keywords[]"]').map(function () {
-                return $(this).val().trim();
-            }).get().filter(function (val) {
-                return val !== '';
-            });
-
-            if (keywordsValues.length < 5) {
-                alert('Por favor, preencha pelo menos 5 palavras-chave.');
-                return;
-            }
-
-            $btn.prop('disabled', true).text('Processando...');
-            $result.hide();
-
-            var data = {
-                action: 'postpro_save_keywords',
-                nonce: postproAdmin.nonce,
-                keywords: keywordsValues
-            };
-
-            $.ajax({
-                url: postproAdmin.ajaxUrl,
-                type: 'POST',
-                data: data,
-                success: function (response) {
-                    if (response.success) {
-                        $result.removeClass('error').addClass('success')
-                            .html('<strong>✓ Sucesso!</strong> Plano Editorial sendo gerado. Redirecionando...').show();
-
-                        setTimeout(function () {
-                            window.location.href = 'admin.php?page=postpro-editorial';
-                        }, 2000);
-                    } else {
-                        $result.removeClass('success').addClass('error')
-                            .html('<strong>✗ Erro:</strong> ' + (response.data || 'Erro desconhecido')).show();
-                        $btn.prop('disabled', false).text('Salvar e Gerar Plano Editorial');
-                    }
-                },
-                error: function () {
-                    $result.removeClass('success').addClass('error')
-                        .html('<strong>✗ Erro de conexão</strong>').show();
-                    $btn.prop('disabled', false).text('Salvar e Gerar Plano Editorial');
-                }
-            });
         });
     }
 

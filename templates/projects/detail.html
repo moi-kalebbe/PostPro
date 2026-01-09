@@ -23,12 +23,7 @@
             </a>
         </div>
         <div class="flex gap-2">
-            <a href="{% url 'projects:batch_upload' project.id %}" class="btn btn-primary">
-                Upload CSV
-            </a>
-            <a href="{% url 'projects:edit' project.id %}" class="btn btn-secondary">
-                Editar
-            </a>
+            <a href="{% url 'projects:edit' project.id %}" class="btn btn-secondary">Editar Projeto</a>
         </div>
     </div>
 
@@ -48,7 +43,7 @@
         </div>
         <div class="card">
             <div class="card-body stat-card">
-                <span class="stat-label">Pendentes</span>
+                <span class="stat-label">Agendados</span>
                 <span class="stat-value text-warning">{{ stats.pending }}</span>
             </div>
         </div>
@@ -61,59 +56,100 @@
     </div>
 
     <div class="grid grid-cols-2">
-        <!-- Project Settings -->
+        <!-- Palavras do Nicho -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Configurações</h3>
+                <h3 class="card-title">🎯 Palavras do Nicho</h3>
             </div>
             <div class="card-body">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <span class="text-sm text-muted">Tom</span>
-                        <div class="font-medium">{{ project.get_tone_display }}</div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-muted">Estilo de Imagem</span>
-                        <div class="font-medium">{{ project.get_image_style_display }}</div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-muted">Modelo de Texto</span>
-                        <div class="font-medium">{{ project.text_model|default:"Padrão" }}</div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-muted">Modelo de Imagem</span>
-                        <div class="font-medium">{{ project.image_model|default:"Padrão" }}</div>
-                    </div>
+                <p class="form-help mb-4">Defina as palavras-chave do seu nicho. O PostPro usará estas palavras para
+                    gerar conteúdo relevante.</p>
+                {% if project.editorial_keywords %}
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {% for kw in project.editorial_keywords %}
+                    <span class="badge badge-primary">{{ kw }}</span>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <p class="text-muted mb-4">Nenhuma palavra-chave configurada ainda.</p>
+                {% endif %}
+                <a href="{% url 'projects:edit' project.id %}" class="btn btn-secondary btn-sm">Configurar Palavras</a>
             </div>
         </div>
 
         <!-- License Key -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">License Key</h3>
+                <h3 class="card-title">🔑 License Key</h3>
             </div>
             <div class="card-body">
+                <p class="form-help mb-3">Use esta chave no plugin WordPress.</p>
                 <div class="flex items-center gap-3">
-                    <code class="code-preview flex-1" style="font-size: 0.75rem; word-break: break-all;">
-                        {{ project.license_key }}
-                    </code>
+                    <code class="code-preview flex-1"
+                        style="font-size: 0.75rem; word-break: break-all;">{{ project.license_key }}</code>
                     <button class="btn btn-secondary btn-sm"
-                        onclick="copyToClipboard('{{ project.license_key }}', this)">
-                        Copiar
-                    </button>
+                        onclick="copyToClipboard('{{ project.license_key }}', this)">Copiar</button>
                 </div>
-                <p class="form-help mt-2">
-                    Use esta chave para configurar o plugin WordPress no seu site.
-                </p>
             </div>
         </div>
     </div>
 
-    <!-- Recent Posts -->
+    <!-- Plano Editorial -->
     <div class="card mt-6">
         <div class="card-header">
-            <h3 class="card-title">Posts Recentes</h3>
+            <h3 class="card-title">📅 Plano Editorial (30 dias)</h3>
+            {% if editorial_plan %}
+            <span
+                class="badge badge-{% if editorial_plan.status == 'active' %}success{% elif editorial_plan.status == 'pending_approval' %}warning{% else %}info{% endif %}">{{
+                editorial_plan.get_status_display }}</span>
+            {% endif %}
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Dia</th>
+                        <th>Título</th>
+                        <th>Keyword</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in editorial_items %}
+                    <tr>
+                        <td><strong>{{ item.day_index }}</strong></td>
+                        <td>{{ item.title|truncatewords:8 }}</td>
+                        <td><span class="badge badge-gray">{{ item.keyword_focus }}</span></td>
+                        <td>
+                            {% if item.status == 'completed' %}
+                            <span class="badge badge-success">{{ item.get_status_display }}</span>
+                            {% elif item.status == 'generating' %}
+                            <span class="badge badge-info">{{ item.get_status_display }}</span>
+                            {% elif item.status == 'failed' %}
+                            <span class="badge badge-error">{{ item.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge badge-warning">{{ item.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ item.scheduled_date|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">
+                            Nenhum plano editorial ativo. Configure as palavras do nicho para gerar um plano.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Posts Recentes -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3 class="card-title">📝 Posts Recentes</h3>
             <a href="{% url 'automation:posts_list' %}?project={{ project.id }}" class="btn btn-ghost btn-sm">Ver
                 todos</a>
         </div>
@@ -121,7 +157,6 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Keyword</th>
                         <th>Título</th>
                         <th>Status</th>
                         <th>Custo</th>
@@ -131,70 +166,24 @@
                 <tbody>
                     {% for post in recent_posts %}
                     <tr>
-                        <td><strong>{{ post.keyword|truncatewords:4 }}</strong></td>
-                        <td>{{ post.title|truncatewords:6|default:'-' }}</td>
+                        <td><strong>{{ post.title|truncatewords:6|default:post.keyword }}</strong></td>
                         <td>
-                            <span
-                                class="badge badge-{% if post.status == 'published' %}success{% elif post.status == 'pending_review' %}warning{% elif post.status == 'failed' %}error{% else %}info{% endif %}">
-                                {{ post.get_status_display }}
-                            </span>
+                            {% if post.status == 'published' %}
+                            <span class="badge badge-success">{{ post.get_status_display }}</span>
+                            {% elif post.status == 'pending_review' %}
+                            <span class="badge badge-warning">{{ post.get_status_display }}</span>
+                            {% elif post.status == 'failed' %}
+                            <span class="badge badge-error">{{ post.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge badge-info">{{ post.get_status_display }}</span>
+                            {% endif %}
                         </td>
                         <td>${{ post.total_cost|floatformat:4 }}</td>
                         <td class="text-muted">{{ post.created_at|date:"d/m H:i" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted p-6">
-                            Nenhum post gerado ainda
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Recent Batches -->
-    <div class="card mt-6">
-        <div class="card-header">
-            <h3 class="card-title">Últimos Jobs</h3>
-        </div>
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Arquivo</th>
-                        <th>Status</th>
-                        <th>Progresso</th>
-                        <th>Tipo</th>
-                        <th>Data</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for batch in recent_batches %}
-                    <tr>
-                        <td>{{ batch.original_filename }}</td>
-                        <td>
-                            <span
-                                class="badge badge-{% if batch.status == 'completed' %}success{% elif batch.status == 'processing' %}info{% elif batch.status == 'failed' %}error{% else %}gray{% endif %}">
-                                {{ batch.get_status_display }}
-                            </span>
-                        </td>
-                        <td>{{ batch.processed_rows }} / {{ batch.total_rows }}</td>
-                        <td>
-                            {% if batch.is_dry_run %}
-                            <span class="text-warning">Simulação</span>
-                            {% else %}
-                            Real
-                            {% endif %}
-                        </td>
-                        <td class="text-muted">{{ batch.created_at|date:"d/m H:i" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted p-6">
-                            Nenhum job ainda
-                        </td>
+                        <td colspan="4" class="text-center text-muted p-6">Nenhum post gerado ainda</td>
                     </tr>
                     {% endfor %}
                 </tbody>

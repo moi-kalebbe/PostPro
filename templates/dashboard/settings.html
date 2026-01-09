@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Configurações - PostPro{% endblock %}
+{% block title %}Configuracoes - PostPro{% endblock %}
 
 {% block sidebar %}
 {% include 'components/sidebar.html' %}
@@ -10,7 +10,7 @@
 {% block content %}
 <div class="container">
     <div class="page-header">
-        <h1 class="page-title">Configurações</h1>
+        <h1 class="page-title">Configuracoes</h1>
     </div>
 
     <div class="grid grid-cols-2">
@@ -24,12 +24,12 @@
                     <input type="hidden" name="action" value="update_api_key">
                     <div class="form-group">
                         <label class="form-label">API Key</label>
-                        <input type="password" name="openrouter_api_key" class="form-input" placeholder="{% if has_api_key %}••••••••••••••••{% else %}sk-or-v1-...{% endif %}">
-                        <span class="form-help">{% if has_api_key %}✓ API key configurada. Deixe em branco para manter.{% else %}Obtenha sua API key em <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a>{% endif %}</span>
+                        <input type="password" name="openrouter_api_key" class="form-input" placeholder="{% if has_api_key %}************{% else %}sk-or-v1-...{% endif %}">
+                        <span class="form-help">{% if has_api_key %}API key configurada.{% else %}Obtenha em openrouter.ai{% endif %}</span>
                     </div>
                     <div class="flex gap-3">
                         <button type="submit" class="btn btn-primary">Salvar</button>
-                        <button type="submit" name="action" value="test_api_key" class="btn btn-secondary">Testar Conexão</button>
+                        <button type="submit" name="action" value="test_api_key" class="btn btn-secondary">Testar</button>
                     </div>
                 </form>
             </div>
@@ -37,7 +37,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Modelos Padrão</h3>
+                <h3 class="card-title">Modelos Padrao</h3>
             </div>
             <div class="card-body">
                 <form method="post">
@@ -46,18 +46,18 @@
                     <div class="form-group">
                         <label class="form-label">Modelo de Texto</label>
                         <select name="default_text_model" class="form-select">
-                            <option value="anthropic/claude-3.5-sonnet" {% if agency.default_text_model == 'anthropic/claude-3.5-sonnet' %}selected{% endif %}>Claude 3.5 Sonnet (Recomendado)</option>
-                            <option value="anthropic/claude-3-haiku" {% if agency.default_text_model == 'anthropic/claude-3-haiku' %}selected{% endif %}>Claude 3 Haiku (Econômico)</option>
-                            <option value="openai/gpt-4o" {% if agency.default_text_model == 'openai/gpt-4o' %}selected{% endif %}>GPT-4o</option>
-                            <option value="openai/gpt-4o-mini" {% if agency.default_text_model == 'openai/gpt-4o-mini' %}selected{% endif %}>GPT-4o Mini</option>
-                            <option value="google/gemini-pro-1.5" {% if agency.default_text_model == 'google/gemini-pro-1.5' %}selected{% endif %}>Gemini Pro 1.5</option>
+                            {% if agency.default_text_model == 'anthropic/claude-3.5-sonnet' %}<option value="anthropic/claude-3.5-sonnet" selected>Claude 3.5 Sonnet</option>{% else %}<option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>{% endif %}
+                            {% if agency.default_text_model == 'anthropic/claude-3-haiku' %}<option value="anthropic/claude-3-haiku" selected>Claude 3 Haiku</option>{% else %}<option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>{% endif %}
+                            {% if agency.default_text_model == 'openai/gpt-4o' %}<option value="openai/gpt-4o" selected>GPT-4o</option>{% else %}<option value="openai/gpt-4o">GPT-4o</option>{% endif %}
+                            {% if agency.default_text_model == 'openai/gpt-4o-mini' %}<option value="openai/gpt-4o-mini" selected>GPT-4o Mini</option>{% else %}<option value="openai/gpt-4o-mini">GPT-4o Mini</option>{% endif %}
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Modelo de Imagem</label>
                         <select name="default_image_model" class="form-select">
-                            <option value="openai/gpt-4o-mini" {% if agency.default_image_model == 'openai/gpt-4o-mini' %}selected{% endif %}>GPT-4o Mini (Econômico)</option>
-                            <option value="openai/gpt-4o" {% if agency.default_image_model == 'openai/gpt-4o' %}selected{% endif %}>GPT-4o</option>
+                            {% if agency.default_image_model == 'pollinations/flux' %}<option value="pollinations/flux" selected>Pollinations Flux</option>{% else %}<option value="pollinations/flux">Pollinations Flux</option>{% endif %}
+                            {% if agency.default_image_model == 'openai/gpt-4o-mini' %}<option value="openai/gpt-4o-mini" selected>GPT-4o Mini</option>{% else %}<option value="openai/gpt-4o-mini">GPT-4o Mini</option>{% endif %}
+                            {% if agency.default_image_model == 'openai/gpt-4o' %}<option value="openai/gpt-4o" selected>GPT-4o</option>{% else %}<option value="openai/gpt-4o">GPT-4o</option>{% endif %}
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Salvar</button>
@@ -72,19 +72,20 @@
             <div class="card-body">
                 <div class="flex items-center justify-between mb-4">
                     <span class="text-lg font-semibold">{{ agency.get_plan_display }}</span>
-                    <span class="badge badge-{% if agency.subscription_status == 'active' %}success{% else %}warning{% endif %}">{{ agency.get_subscription_status_display }}</span>
+                    {% if agency.subscription_status == 'active' %}
+                    <span class="badge badge-success">{{ agency.get_subscription_status_display }}</span>
+                    {% else %}
+                    <span class="badge badge-warning">{{ agency.get_subscription_status_display }}</span>
+                    {% endif %}
                 </div>
                 <div class="mb-4">
                     <div class="flex justify-between text-sm mb-2">
-                        <span>Posts este mês</span>
+                        <span>Posts este mes</span>
                         <span>{{ agency.current_month_posts }} / {{ agency.monthly_posts_limit }}</span>
                     </div>
                     <div class="progress">
                         <div class="progress-bar" style="width: {% widthratio agency.current_month_posts agency.monthly_posts_limit 100 %}%"></div>
                     </div>
-                </div>
-                <div class="text-sm text-muted">
-                    <p>Projetos: {{ agency.projects_count }} / {{ agency.max_projects }}</p>
                 </div>
             </div>
         </div>
@@ -92,7 +93,6 @@
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Equipe</h3>
-                <button class="btn btn-secondary btn-sm" disabled>Convidar (Em breve)</button>
             </div>
             <div class="card-body">
                 <table class="table">
@@ -102,7 +102,7 @@
                     <tbody>
                         {% for member in team_members %}
                         <tr>
-                            <td><strong>{{ member.first_name }} {{ member.last_name }}</strong><div class="text-xs text-muted">{{ member.email }}</div></td>
+                            <td><strong>{{ member.first_name }} {{ member.last_name }}</strong></td>
                             <td><span class="badge badge-gray">{{ member.get_role_display }}</span></td>
                         </tr>
                         {% empty %}

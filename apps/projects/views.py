@@ -81,11 +81,6 @@ def project_detail_view(request, project_id):
         project=project
     ).order_by('-created_at')[:10]
     
-    # Recent batches
-    recent_batches = BatchJob.objects.filter(
-        project=project
-    ).order_by('-created_at')[:5]
-    
     # Stats
     stats = Post.objects.filter(project=project).aggregate(
         total_posts=Count('id'),
@@ -96,11 +91,23 @@ def project_detail_view(request, project_id):
         total_tokens=Sum('tokens_total')
     )
     
+    # Editorial Plan (latest active or pending)
+    from apps.automation.models import EditorialPlan
+    editorial_plan = EditorialPlan.objects.filter(
+        project=project,
+        status__in=[EditorialPlan.Status.ACTIVE, EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.APPROVED]
+    ).order_by('-created_at').first()
+    
+    editorial_items = []
+    if editorial_plan:
+        editorial_items = editorial_plan.items.all().order_by('day_index')[:30]
+    
     context = {
         'project': project,
         'recent_posts': recent_posts,
-        'recent_batches': recent_batches,
         'stats': stats,
+        'editorial_plan': editorial_plan,
+        'editorial_items': editorial_items,
     }
     
     return render(request, 'projects/detail.html', context)

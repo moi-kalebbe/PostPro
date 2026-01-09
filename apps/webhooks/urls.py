@@ -14,6 +14,7 @@ urlpatterns = [
     # Project operations
     path('project/sync-profile', views.sync_site_profile_view, name='sync_profile'),
     path('project/editorial-plan', views.editorial_plan_view, name='editorial_plan'),
+    path('project/keywords', views.save_keywords_view, name='save_keywords'),
     
     # Batch operations
     path('batch-upload', views.batch_upload_view, name='batch_upload'),

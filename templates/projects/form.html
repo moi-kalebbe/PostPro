@@ -8,107 +8,268 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-header">
-        <h1 class="page-title">{% if is_edit %}Editar Projeto{% else %}Novo Projeto{% endif %}</h1>
+<style>
+    /* Custom Styles to ensure functionality without Tailwind build */
+    .pp-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+        font-family: 'Inter', sans-serif;
+    }
+    .pp-header {
+        margin-bottom: 24px;
+    }
+    .pp-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary, #111827);
+    }
+    .pp-card {
+        background: var(--surface, #ffffff);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 32px;
+        border: 1px solid #e5e7eb;
+    }
+    .pp-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    @media (min-width: 768px) {
+        .pp-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    .pp-form-group {
+        margin-bottom: 20px;
+        width: 100%;
+    }
+    .pp-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary, #374151);
+    }
+    .pp-input, .pp-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.15s;
+        box-sizing: border-box; /* Critical for width 100% */
+    }
+    .pp-input:focus, .pp-select:focus {
+        border-color: #f97316;
+        outline: 3px solid rgba(249, 115, 22, 0.1);
+    }
+    .pp-help {
+        font-size: 13px;
+        color: #6b7280;
+        margin-top: 6px;
+        display: block;
+    }
+    
+    /* Alert style */
+    .pp-alert {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 12px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        color: #1e3a8a;
+    }
+    .pp-alert svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .pp-alert-content h4 {
+        margin: 0 0 4px 0;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .pp-alert-content ol {
+        margin: 0;
+        padding-left: 20px;
+        list-style-type: decimal;
+        font-size: 13px;
+    }
+    
+    /* Checkbox */
+    .pp-checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 24px;
+    }
+    .pp-checkbox-group:hover {
+        background-color: #f9fafb;
+    }
+    .pp-checkbox {
+        width: 20px;
+        height: 20px;
+        accent-color: #f97316;
+    }
+
+    /* Actions */
+    .pp-actions {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    @media (min-width: 640px) {
+        .pp-actions {
+            flex-direction: row;
+        }
+    }
+    .pp-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .pp-btn-primary {
+        background-color: #f97316;
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .pp-btn-primary:hover {
+        background-color: #ea580c;
+    }
+    .pp-btn-secondary {
+        background-color: transparent;
+        color: #4b5563;
+        border: 1px solid transparent;
+    }
+    .pp-btn-secondary:hover {
+        background-color: #f3f4f6;
+    }
+</style>
+
+<div class="pp-container">
+    <div class="pp-header">
+        <h1 class="pp-title">{% if is_edit %}Editar Projeto{% else %}Novo Projeto{% endif %}</h1>
     </div>
 
-    <div class="card" style="max-width: 800px;">
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
+    <div class="pp-card">
+        <form method="post">
+            {% csrf_token %}
 
-                <div class="grid grid-cols-2" style="gap: 1.5rem;">
-                    <div>
-                        <h3 class="mb-4">Informações Básicas</h3>
-
-                        <div class="form-group">
-                            <label class="form-label">Nome do Projeto *</label>
-                            <input type="text" name="name" class="form-input" value="{{ form.name.value|default:'' }}" placeholder="Meu Blog" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">URL do WordPress *</label>
-                            <input type="url" name="wordpress_url" class="form-input" value="{{ form.wordpress_url.value|default:'' }}" placeholder="https://seusite.com" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Usuário WordPress</label>
-                            <input type="text" name="wordpress_username" class="form-input" value="{{ form.wordpress_username.value|default:'' }}" placeholder="admin">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Application Password</label>
-                            <input type="password" name="wordpress_password" class="form-input" placeholder="{% if is_edit %}Deixe vazio para manter{% else %}xxxx xxxx xxxx xxxx{% endif %}">
-                            <span class="form-help">Gere em: WordPress Admin → Users → Edit Profile → Application Passwords</span>
-                        </div>
+            <div class="pp-grid">
+                <!-- Coluna Esquerda -->
+                <div>
+                    <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6;">
+                        <h3 style="font-size: 18px; font-weight: 600;">Informações Básicas</h3>
                     </div>
 
-                    <div>
-                        <h3 class="mb-4">Configurações de Conteúdo</h3>
+                    <div class="pp-form-group">
+                        <label class="pp-label">Nome do Projeto *</label>
+                        <input type="text" name="name" class="pp-input" value="{{ form.name.value|default:'' }}" placeholder="Ex: Meu Blog de Tech" required>
+                    </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Tom do Conteúdo</label>
-                            <select name="tone" class="form-select">
-                                {% for value, label in form.fields.tone.choices %}
-                                <option value="{{ value }}" {% if form.tone.value == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div class="pp-form-group">
+                        <label class="pp-label">URL do WordPress *</label>
+                        <input type="url" name="wordpress_url" class="pp-input" value="{{ form.wordpress_url.value|default:'' }}" placeholder="https://seusite.com" required>
+                    </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Estilo de Imagem</label>
-                            <select name="image_style" class="form-select">
-                                {% for value, label in form.fields.image_style.choices %}
-                                <option value="{{ value }}" {% if form.image_style.value == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div class="pp-form-group">
+                        <label class="pp-label">Usuário WordPress</label>
+                        <input type="text" name="wordpress_username" class="pp-input" value="{{ form.wordpress_username.value|default:'' }}" placeholder="admin">
+                    </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Modelo de Texto (override)</label>
-                            <input type="text" name="text_model" class="form-input" value="{{ form.text_model.value|default:'' }}" placeholder="Deixe vazio para usar padrão da agência">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Modelo de Imagem (override)</label>
-                            <input type="text" name="image_model" class="form-input" value="{{ form.image_model.value|default:'' }}" placeholder="Deixe vazio para usar padrão da agência">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="is_active" class="form-checkbox" {% if form.is_active.value %}checked{% endif %}>
-                                <span>Projeto Ativo</span>
-                            </label>
+                    <div class="pp-form-group">
+                        <label class="pp-label">Application Password</label>
+                        <input type="password" name="wordpress_password" class="pp-input" style="font-family: monospace;" placeholder="{% if is_edit %}Deixe vazio para manter{% else %}xxxx xxxx xxxx xxxx{% endif %}">
+                        
+                        <div class="pp-alert">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div class="pp-alert-content">
+                                <h4>Como gerar a senha:</h4>
+                                <ol>
+                                    <li>No WordPress, vá em <b>Usuários > Perfil</b></li>
+                                    <li>Role até "Application Passwords"</li>
+                                    <li>Crie uma nova e <b>copie com os espaços</b></li>
+                                </ol>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex gap-3 mt-6">
-                    <button type="submit" class="btn btn-primary">{% if is_edit %}Salvar Alterações{% else %}Criar Projeto{% endif %}</button>
-                    <a href="{% if is_edit %}{% url 'projects:detail' project.id %}{% else %}{% url 'projects:list' %}{% endif %}" class="btn btn-secondary">Cancelar</a>
+                <!-- Coluna Direita -->
+                <div>
+                    <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6;">
+                        <h3 style="font-size: 18px; font-weight: 600;">Configurações de Conteúdo</h3>
+                    </div>
+
+                    <div class="pp-form-group">
+                        <label class="pp-label">Tom do Conteúdo</label>
+                        <select name="tone" class="pp-select">
+                            {% for value, label in form.fields.tone.choices %}
+                            <option value="{{ value }}" {% if form.tone.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="pp-help">Define a personalidade dos posts gerados.</span>
+                    </div>
+
+                    <div class="pp-form-group">
+                        <label class="pp-label">Estilo de Imagem</label>
+                        <select name="image_style" class="pp-select">
+                            {% for value, label in form.fields.image_style.choices %}
+                            <option value="{{ value }}" {% if form.image_style.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="pp-help">Estilo visual para as imagens via IA.</span>
+                    </div>
+
+                    <label class="pp-checkbox-group">
+                        <input type="checkbox" name="is_active" class="pp-checkbox" {% if form.is_active.value %}checked{% endif %}>
+                        <span style="font-weight: 500;">Projeto Ativo</span>
+                    </label>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            <div class="pp-actions">
+                <button type="submit" class="pp-btn pp-btn-primary">
+                    {% if is_edit %}Salvar Alterações{% else %}Criar Projeto{% endif %}
+                </button>
+                <a href="{% if is_edit %}{% url 'projects:detail' project.id %}{% else %}{% url 'projects:list' %}{% endif %}" class="pp-btn pp-btn-secondary">Cancelar</a>
+            </div>
+        </form>
     </div>
 
     {% if is_edit %}
-    <div class="card mt-6" style="max-width: 800px;">
-        <div class="card-header">
-            <h3 class="card-title">License Key</h3>
+    <div class="pp-card" style="margin-top: 32px;">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">License Key</h3>
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; font-family: monospace; word-break: break-all; margin-bottom: 16px;">
+            {{ project.license_key }}
         </div>
-        <div class="card-body">
-            <div class="flex items-center gap-4">
-                <code class="code-preview flex-1" style="word-break: break-all;">{{ project.license_key }}</code>
-                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('{{ project.license_key }}', this)">Copiar</button>
-            </div>
-            <p class="form-help mt-2">Use esta license key para configurar o plugin WordPress.</p>
-
-            <form method="post" action="{% url 'projects:regenerate_key' project.id %}" class="mt-4">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm text-error" onclick="return confirm('Regenerar a license key? O plugin precisará ser reconfigurado.')">Regenerar Key</button>
-            </form>
-        </div>
+        <form method="post" action="{% url 'projects:regenerate_key' project.id %}">
+            {% csrf_token %}
+            <button type="submit" class="pp-btn pp-btn-secondary" style="color: #ef4444; padding: 6px 16px; font-size: 13px;" onclick="return confirm('Regenerar a chave desconectará o plugin atual. Deseja continuar?')">Regenerar Key</button>
+        </form>
     </div>
     {% endif %}
 </div>

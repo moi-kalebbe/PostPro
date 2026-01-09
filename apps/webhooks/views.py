@@ -453,3 +453,65 @@ def editorial_plan_view(request):
         },
         "items": items_data
     })
+
+
+@require_POST
+@csrf_exempt
+@license_required
+def save_keywords_view(request):
+    """
+    Save niche keywords for the project.
+    
+    POST /api/v1/project/keywords
+    Headers: X-License-Key
+    Body: {"keywords": ["keyword1", "keyword2", ...]}
+    """
+    project = request.project
+    
+    try:
+        data = json.loads(request.body)
+        keywords = data.get('keywords', [])
+        
+        # Validate: 5-10 keywords required
+        if len(keywords) < 5:
+            return JsonResponse({
+                "success": False,
+                "error": "Minimum 5 keywords required"
+            }, status=400)
+        
+        if len(keywords) > 10:
+            keywords = keywords[:10]  # Limit to 10
+        
+        # Save to project (use a JSONField or create a new model)
+        # For now, store in project's metadata or create EditorialPlan
+        from apps.automation.models import EditorialPlan
+        from datetime import date, timedelta
+        
+        # Create or update pending plan with keywords
+        plan, created = EditorialPlan.objects.update_or_create(
+            project=project,
+            status__in=[EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.GENERATING],
+            defaults={
+                'keywords': keywords,
+                'start_date': date.today() + timedelta(days=1),
+                'status': EditorialPlan.Status.PENDING_APPROVAL,
+            }
+        )
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Keywords saved successfully",
+            "plan_id": str(plan.id),
+            "keywords_count": len(keywords)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "error": "Invalid JSON body"
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=500)

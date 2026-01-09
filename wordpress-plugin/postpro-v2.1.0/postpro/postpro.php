@@ -43,7 +43,6 @@ class PostPro_Plugin {
         add_action('wp_ajax_postpro_upload_csv', array($this, 'ajax_upload_csv'));
         add_action('wp_ajax_postpro_sync_profile', array($this, 'ajax_sync_profile'));
         add_action('wp_ajax_postpro_get_plan', array($this, 'ajax_get_plan'));
-        add_action('wp_ajax_postpro_save_keywords', array($this, 'ajax_save_keywords'));
     }
     
     // =========================================================================
@@ -465,46 +464,6 @@ class PostPro_Plugin {
             .postpro-form-group .required { color: #dc3545; }
         </style>
         <?php
-    }
-
-    public function ajax_save_keywords() {
-        check_ajax_referer('postpro_nonce', 'nonce');
-        
-        $license_key = get_option('postpro_license_key', '');
-        if (empty($license_key)) {
-            wp_send_json_error('License Key não configurada');
-        }
-        
-        $keywords = isset($_POST['keywords']) ? $_POST['keywords'] : array();
-        if (empty($keywords) || !is_array($keywords)) {
-            wp_send_json_error('Nenhuma palavra-chave enviada');
-        }
-        
-        // Filter empty keywords
-        $keywords = array_filter($keywords, function($k) {
-            return !empty(trim($k));
-        });
-        
-        if (count($keywords) < 5) {
-            wp_send_json_error('Mínimo de 5 palavras-chave necessárias');
-        }
-        
-        $response = $this->proxy_api_request('/project/keywords', 'POST', array(
-            'keywords' => array_values($keywords)
-        ));
-        
-        if (is_wp_error($response)) {
-            wp_send_json_error($response->get_error_message());
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        
-        if (wp_remote_retrieve_response_code($response) !== 200) {
-            $msg = isset($body['detail']) ? $body['detail'] : 'Erro ao salvar palavras-chave';
-            wp_send_json_error($msg);
-        }
-        
-        wp_send_json_success($body);
     }
     
     // =========================================================================
