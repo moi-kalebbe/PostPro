@@ -244,6 +244,31 @@
                         <span class="pp-help">Estilo visual para as imagens via IA.</span>
                     </div>
 
+                    <!-- Configurações de IA -->
+                    <div style="margin-top: 24px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6;">
+                        <h3 style="font-size: 18px; font-weight: 600;">⚡ Configurações de IA</h3>
+                    </div>
+
+                    <div class="pp-form-group">
+                        <label class="pp-label">Modelo de Texto</label>
+                        <select name="text_model" class="pp-select">
+                            {% for value, label in form.fields.text_model.widget.choices %}
+                            <option value="{{ value }}" {% if form.text_model.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="pp-help">Deixe vazio para usar o padrão da agência.</span>
+                    </div>
+
+                    <div class="pp-form-group">
+                        <label class="pp-label">Modelo de Imagem</label>
+                        <select name="image_model" class="pp-select">
+                            {% for value, label in form.fields.image_model.widget.choices %}
+                            <option value="{{ value }}" {% if form.image_model.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="pp-help">Pollinations = gratuito/barato. OpenAI = premium.</span>
+                    </div>
+
                     <label class="pp-checkbox-group">
                         <input type="checkbox" name="is_active" class="pp-checkbox" {% if form.is_active.value %}checked{% endif %}>
                         <span style="font-weight: 500;">Projeto Ativo</span>

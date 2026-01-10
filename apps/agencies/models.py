@@ -46,7 +46,7 @@ class Agency(models.Model):
     )
     default_image_model = models.CharField(
         max_length=100,
-        default='openai/gpt-4o-mini'
+        default='pollinations/flux'
     )
     
     # Billing

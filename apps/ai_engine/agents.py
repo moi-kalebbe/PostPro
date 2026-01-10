@@ -17,6 +17,11 @@ from services.openrouter import (
     OpenRouterImageResult,
     InvalidResponseError,
 )
+from services.pollinations import (
+    PollinationsService,
+    PollinationsImageResult,
+    PollinationsError,
+)
 from apps.automation.models import Post, PostArtifact
 
 logger = logging.getLogger(__name__)
@@ -326,7 +331,19 @@ class ImageAgent(BaseAgent):
     """
     Agent 4: Image Generator
     Creates featured image for the article.
+    Supports both OpenRouter and Pollinations for image generation.
     """
+    
+    def _is_pollinations_model(self, model: str) -> bool:
+        """Check if the model is a Pollinations model."""
+        return model.startswith("pollinations/")
+    
+    def _get_pollinations_model_name(self, model: str) -> str:
+        """Extract Pollinations model name from full identifier."""
+        # e.g., "pollinations/flux" -> "flux"
+        if model.startswith("pollinations/"):
+            return model.split("/", 1)[1]
+        return model
     
     def run(self, title: str = None) -> str:
         """Generate featured image and return data URL."""
@@ -348,11 +365,40 @@ Requirements:
 - High quality, visually appealing
 - Relevant to the topic"""
         
+        image_model = self.project.get_image_model()
+        
         try:
-            result = self.openrouter.generate_image(
-                prompt=prompt,
-                model=self.project.get_image_model(),
-            )
+            # Choose provider based on model
+            if self._is_pollinations_model(image_model):
+                # Use Pollinations for pollinations/* models
+                pollinations_model = self._get_pollinations_model_name(image_model)
+                logger.info(f"Using Pollinations for image generation with model: {pollinations_model}")
+                
+                pollinations = PollinationsService()
+                result = pollinations.generate_image(
+                    prompt=prompt,
+                    model=pollinations_model,
+                    width=1920,
+                    height=1080,
+                    nologo=True,
+                    enhance=True,
+                )
+                
+                image_data_url = result.image_data_url
+                model_used = image_model
+                cost = result.cost
+            else:
+                # Use OpenRouter for openai/* models (DALL-E 3, etc.)
+                logger.info(f"Using OpenRouter for image generation with model: {image_model}")
+                
+                result = self.openrouter.generate_image(
+                    prompt=prompt,
+                    model=image_model,
+                )
+                
+                image_data_url = result.image_data_url
+                model_used = result.model
+                cost = result.cost
             
             # Save artifact
             PostArtifact.objects.create(
@@ -360,21 +406,21 @@ Requirements:
                 step=PostArtifact.Step.IMAGE,
                 input_prompt=prompt,
                 system_prompt="Image generation",
-                model_used=result.model,
+                model_used=model_used,
                 provider_response={"truncated": True},  # Don't store full base64
-                parsed_output={"image_generated": True},
-                cost=result.cost,
+                parsed_output={"image_generated": True, "provider": "pollinations" if self._is_pollinations_model(image_model) else "openrouter"},
+                cost=cost,
                 is_active=True,
             ).deactivate_previous()
             
             # Update post
-            self.post.image_generation_cost += result.cost
+            self.post.image_generation_cost += cost
             self.post.step_state["image"] = "completed"
             self.post.save()
             
-            return result.image_data_url
+            return image_data_url
             
-        except Exception as e:
+        except (PollinationsError, Exception) as e:
             self.post.step_state["image"] = "failed"
             self.post.save()
             logger.error(f"Image agent failed for {self.post.id}: {e}")
