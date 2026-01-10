@@ -77,7 +77,7 @@ class PostPro_Plugin {
     public function render_settings_page() {
         ?>
         <div class="wrap postpro-wrapper">
-            <h1>Configurações PostPro (v2.2.1)</h1>
+            <h1>Configurações PostPro (v2.2.0)</h1>
             
             <!-- Connection Card -->
             <div class="card postpro-card">
@@ -212,8 +212,8 @@ class PostPro_Plugin {
             return;
         }
         
-        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.2.1');
-        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.2.1', true);
+        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.2.0');
+        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.2.0', true);
         
         wp_localize_script('postpro-admin-js', 'postproAdmin', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -492,29 +492,19 @@ class PostPro_Plugin {
 // Initialize
 PostPro_Plugin::get_instance();
 
-// Deactivation hook - clean up scheduled tasks
+// Deactivation hook
 register_deactivation_hook(__FILE__, 'postpro_deactivate');
-
 function postpro_deactivate() {
-    // Clear any scheduled cron jobs if they exist
     wp_clear_scheduled_hook('postpro_daily_sync');
 }
 
 // Uninstall hook - allows plugin to be properly deleted
 register_uninstall_hook(__FILE__, 'postpro_uninstall');
-
 function postpro_uninstall() {
-    // Delete all plugin options
     delete_option('postpro_license_key');
     delete_option('postpro_api_url');
     delete_option('postpro_settings');
-    
-    // Delete post meta
     global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = 'postpro_external_id'");
     $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE 'postpro_%'");
-    
-    // Delete transients
     $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_postpro_%'");
-    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_postpro_%'");
 }
