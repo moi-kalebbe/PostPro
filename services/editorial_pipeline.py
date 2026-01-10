@@ -208,11 +208,11 @@ Requirements:
 Return ONLY valid JSON matching the schema.
 The JSON must have a root key "items" containing the list of plan items.
 Example:
-{
+{{
   "items": [
-    { "day": 1, "title": "...", ... }
+    {{ "day": 1, "title": "...", "keyword_focus": "...", "search_intent": "...", "cluster": "...", "rationale": "..." }}
   ]
-}"""
+}}"""
         
         # Call LLM
         messages = [{"role": "user", "content": prompt}]
