@@ -172,3 +172,168 @@ def project_batch_upload_view(request, project_id):
 
 # Import models for Q filter
 from django.db import models
+
+
+@login_required
+@project_access_required
+def editorial_item_delete_view(request, project_id, item_id):
+    """Delete a single editorial plan item and optionally from WordPress."""
+    from django.http import JsonResponse
+    from django.views.decorators.http import require_POST
+    from apps.automation.models import EditorialPlanItem, ActivityLog
+    from services.wordpress import WordPressService
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+    
+    project = request.project
+    
+    try:
+        item = EditorialPlanItem.objects.select_related('plan', 'post').get(
+            id=item_id,
+            plan__project=project
+        )
+    except EditorialPlanItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Item não encontrado'}, status=404)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        data = {}
+    
+    delete_from_wp = data.get('delete_from_wordpress', False)
+    wp_result = None
+    
+    # If item has a linked post published to WordPress, delete it
+    if delete_from_wp and item.post and item.post.wordpress_post_id:
+        try:
+            wp_password = project.get_wordpress_password()
+            if wp_password and project.wordpress_username:
+                wp_service = WordPressService(
+                    site_url=project.wordpress_url,
+                    username=project.wordpress_username,
+                    app_password=wp_password
+                )
+                wp_result = wp_service.delete_post(item.post.wordpress_post_id)
+        except Exception as e:
+            wp_result = {'success': False, 'message': str(e)}
+    
+    # Log activity
+    ActivityLog.objects.create(
+        agency=project.agency,
+        project=project,
+        actor_user=request.user,
+        action="EDITORIAL_ITEM_DELETED",
+        entity_type="EditorialPlanItem",
+        entity_id=str(item.id),
+        metadata={
+            "title": item.title,
+            "keyword": item.keyword_focus,
+            "deleted_from_wp": delete_from_wp,
+            "wp_result": wp_result,
+        }
+    )
+    
+    # Delete associated post if exists
+    if item.post:
+        item.post.delete()
+    
+    # Delete the item
+    item.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Item excluído com sucesso',
+        'deleted_from_wordpress': wp_result.get('success', False) if wp_result else False,
+    })
+
+
+@login_required
+@project_access_required
+def editorial_items_bulk_delete_view(request, project_id):
+    """Delete multiple editorial plan items at once."""
+    from django.http import JsonResponse
+    from apps.automation.models import EditorialPlanItem, ActivityLog
+    from services.wordpress import WordPressService
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+    
+    project = request.project
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    
+    item_ids = data.get('item_ids', [])
+    delete_from_wp = data.get('delete_from_wordpress', False)
+    
+    if not item_ids:
+        return JsonResponse({'success': False, 'message': 'Nenhum item selecionado'}, status=400)
+    
+    # Get items
+    items = EditorialPlanItem.objects.filter(
+        id__in=item_ids,
+        plan__project=project
+    ).select_related('plan', 'post')
+    
+    deleted_count = 0
+    wp_deleted_count = 0
+    
+    # Initialize WordPress service if needed
+    wp_service = None
+    if delete_from_wp:
+        try:
+            wp_password = project.get_wordpress_password()
+            if wp_password and project.wordpress_username:
+                wp_service = WordPressService(
+                    site_url=project.wordpress_url,
+                    username=project.wordpress_username,
+                    app_password=wp_password
+                )
+        except Exception:
+            pass
+    
+    for item in items:
+        try:
+            # Delete from WordPress if applicable
+            if wp_service and item.post and item.post.wordpress_post_id:
+                result = wp_service.delete_post(item.post.wordpress_post_id)
+                if result.get('success'):
+                    wp_deleted_count += 1
+            
+            # Log activity
+            ActivityLog.objects.create(
+                agency=project.agency,
+                project=project,
+                actor_user=request.user,
+                action="EDITORIAL_ITEM_DELETED",
+                entity_type="EditorialPlanItem",
+                entity_id=str(item.id),
+                metadata={
+                    "title": item.title,
+                    "bulk_delete": True,
+                }
+            )
+            
+            # Delete associated post
+            if item.post:
+                item.post.delete()
+            
+            # Delete item
+            item.delete()
+            deleted_count += 1
+            
+        except Exception as e:
+            continue
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'{deleted_count} item(ns) excluído(s)',
+        'deleted_count': deleted_count,
+        'wp_deleted_count': wp_deleted_count,
+    })
+

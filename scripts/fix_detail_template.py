@@ -1,4 +1,10 @@
-{% extends 'base.html' %}
+"""
+Script para corrigir o template detail.html do projeto.
+Seguindo workflow django-templates.md para evitar corrupção.
+CORRIGIDO: Usa UUID válido + abordagem manual para URL dinâmica.
+"""
+
+content = r'''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ project.name }} - PostPro{% endblock %}
@@ -418,3 +424,32 @@ function copyToClipboard(text, btn) {
 }
 </script>
 {% endblock %}
+'''
+
+import os
+
+template_path = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\projects\detail.html'
+
+with open(template_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print(f'Template atualizado: {template_path}')
+print('Verificando sintaxe...')
+
+# Verificar padrões problemáticos
+errors = []
+lines = content.split('\n')
+for i, line in enumerate(lines, 1):
+    # Check for operators without spaces
+    import re
+    if re.search(r'{% if .*[^ ]==[^ ].* %}', line):
+        errors.append(f'Linha {i}: Operador == sem espaços')
+    if re.search(r'{% if .*[^ ]!=[^ ].* %}', line):
+        errors.append(f'Linha {i}: Operador != sem espaços')
+
+if errors:
+    print('ERROS ENCONTRADOS:')
+    for e in errors:
+        print(f'  - {e}')
+else:
+    print('OK - Nenhum erro de sintaxe detectado')

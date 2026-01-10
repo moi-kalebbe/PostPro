@@ -507,6 +507,7 @@ def editorial_plan_view(request):
 def save_keywords_view(request):
     """
     Save niche keywords for the project.
+    RESET: Deletes all existing posts and old plans before creating new plan.
     
     POST /api/v1/project/keywords
     Headers: X-License-Key
@@ -528,29 +529,37 @@ def save_keywords_view(request):
         if len(keywords) > 10:
             keywords = keywords[:10]  # Limit to 10
         
-        # Save to project (use a JSONField or create a new model)
-        # For now, store in project's metadata or create EditorialPlan
-        from apps.automation.models import EditorialPlan
+        from apps.automation.models import EditorialPlan, Post
         from datetime import date, timedelta
         
-        # Check active/generating plans first
-        plan = EditorialPlan.objects.filter(
+        # ========================================
+        # RESET: Delete existing posts and plans
+        # ========================================
+        
+        # Count what will be deleted for logging
+        posts_to_delete = Post.objects.filter(project=project).count()
+        plans_to_delete = EditorialPlan.objects.filter(project=project).count()
+        
+        # Delete all posts for this project (local only - not from WordPress)
+        Post.objects.filter(project=project).delete()
+        
+        # Mark all existing plans as rejected/archived
+        EditorialPlan.objects.filter(project=project).update(
+            status=EditorialPlan.Status.REJECTED,
+            rejection_reason="Replaced by new keyword submission"
+        )
+        
+        logger.info(f"RESET for project {project.id}: Deleted {posts_to_delete} posts, archived {plans_to_delete} plans")
+        
+        # ========================================
+        # Create new editorial plan
+        # ========================================
+        plan = EditorialPlan.objects.create(
             project=project,
-            status__in=[EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.GENERATING]
-        ).first()
-
-        if plan:
-            plan.keywords = keywords
-            plan.start_date = date.today() + timedelta(days=1)
-            plan.status = EditorialPlan.Status.GENERATING
-            plan.save()
-        else:
-            plan = EditorialPlan.objects.create(
-                project=project,
-                keywords=keywords,
-                start_date=date.today() + timedelta(days=1),
-                status=EditorialPlan.Status.GENERATING
-            )
+            keywords=keywords,
+            start_date=date.today() + timedelta(days=1),
+            status=EditorialPlan.Status.GENERATING
+        )
             
         # Trigger generation task logic
         from apps.automation.tasks import generate_editorial_plan
@@ -558,9 +567,13 @@ def save_keywords_view(request):
         
         return JsonResponse({
             "success": True,
-            "message": "Keywords saved and plan generation started",
+            "message": "Keywords saved, database reset, and new plan generation started",
             "plan_id": str(plan.id),
-            "keywords_count": len(keywords)
+            "keywords_count": len(keywords),
+            "reset_stats": {
+                "posts_deleted": posts_to_delete,
+                "plans_archived": plans_to_delete
+            }
         })
         
     except json.JSONDecodeError:
