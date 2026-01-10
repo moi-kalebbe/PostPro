@@ -491,3 +491,16 @@ class PostPro_Plugin {
 
 // Initialize
 PostPro_Plugin::get_instance();
+
+// Uninstall hook - allows plugin to be properly deleted
+register_uninstall_hook(__FILE__, 'postpro_uninstall');
+
+function postpro_uninstall() {
+    // Clean up options
+    delete_option('postpro_license_key');
+    delete_option('postpro_api_url');
+    
+    // Clean up post meta
+    global $wpdb;
+    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = 'postpro_external_id'");
+}

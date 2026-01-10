@@ -1,45 +1,30 @@
 # PostPro WordPress Plugin
 
-> ⚠️ **IMPORTANTE: NÃO ALTERE O DESIGN DESTE PLUGIN!**
+> ⚠️ **NÃO ALTERE O DESIGN DESTE PLUGIN!** O layout visual está aprovado.
 
-Este plugin tem um design específico aprovado pelo cliente. O design atual é considerado FINAL e não deve ser modificado sem aprovação explícita.
-
-## Versão Atual
+## Versão
 - **Versão**: 2.2.0
-- **Design aprovado em**: 09/01/2026 às 18:14
+- **Fonte**: `postpro-vCorreta.zip`
 
 ## Estrutura
 ```
 postpro/
-├── postpro.php          # Arquivo principal do plugin
+├── postpro.php              # Arquivo principal
 └── assets/
-    ├── css/
-    │   └── admin.css    # CSS DO PLUGIN - NÃO ALTERAR DESIGN!
-    └── js/
-        └── admin.js     # JavaScript do plugin
+    ├── css/admin.css        # CSS - NÃO ALTERAR!
+    └── js/admin.js          # JavaScript
 ```
 
-## Regras de Desenvolvimento
+## O que pode ser alterado:
+- ✅ URL da API
+- ✅ Correções de bugs de funcionalidade
+- ✅ Lógica de backend
 
-### ✅ O que PODE ser alterado:
-- Correção de bugs de funcionalidade
-- URL da API (`POSTPRO_API_BASE`)
-- Lógica de comunicação com backend
-- Número da versão
+## O que NÃO pode ser alterado:
+- ❌ Layout/Design (CSS)
+- ❌ Estrutura HTML
 
-### ❌ O que NÃO PODE ser alterado:
-- Layout visual (CSS)
-- Estrutura HTML dos componentes
-- Cores, fontes, espaçamentos
-- Estilo dos cards, botões, tabelas
-
-## API URL
-A URL da API deve apontar para:
+## API
 ```
 https://postpro.nuvemchat.com/api/v1
-```
-
-## Como criar o ZIP para distribuição
-```powershell
-Compress-Archive -Path "wordpress-plugin\postpro" -DestinationPath "postpro-v2.2.0.zip"
 ```
