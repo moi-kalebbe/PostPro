@@ -547,3 +547,50 @@
         margin-bottom: 4px;
     }
 }
+
+/* =========================================================================
+   Newspaper Theme Override - Force table layout
+   These rules use high specificity to override aggressive theme CSS
+   ========================================================================= */
+body.theme-flavor-flavor-flavor #postpro-plan-content table,
+body[class*="flavor"] #postpro-plan-content table,
+body #postpro-plan-content table.wp-list-table,
+#postpro-plan-content table.wp-list-table {
+    display: table !important;
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+}
+
+body #postpro-plan-content table.wp-list-table thead,
+#postpro-plan-content table.wp-list-table thead {
+    display: table-header-group !important;
+}
+
+body #postpro-plan-content table.wp-list-table tbody,
+#postpro-plan-content table.wp-list-table tbody {
+    display: table-row-group !important;
+}
+
+body #postpro-plan-content table.wp-list-table tr,
+#postpro-plan-content table.wp-list-table tr {
+    display: table-row !important;
+}
+
+body #postpro-plan-content table.wp-list-table th,
+body #postpro-plan-content table.wp-list-table td,
+#postpro-plan-content table.wp-list-table th,
+#postpro-plan-content table.wp-list-table td {
+    display: table-cell !important;
+    vertical-align: middle !important;
+    padding: 10px !important;
+    text-align: left !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+#postpro-plan-content table.wp-list-table th:nth-child(2),
+#postpro-plan-content table.wp-list-table td:nth-child(2) {
+    min-width: 250px !important;
+    width: auto !important;
+}

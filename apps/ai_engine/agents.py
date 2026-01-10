@@ -412,11 +412,14 @@ def run_full_pipeline(
         article_agent = ArticleAgent(openrouter, post)
         article_agent.run(research_data, strategy_data)
         
-        # Step 4: Image (optional)
+        # Step 4: Image (optional - failure is non-fatal)
         if generate_image:
-            image_agent = ImageAgent(openrouter, post)
-            image_data_url = image_agent.run(post.title)
-            # Image upload to Supabase happens in the task
+            try:
+                image_agent = ImageAgent(openrouter, post)
+                image_data_url = image_agent.run(post.title)
+                # Image upload happens in the task
+            except Exception as e:
+                logger.warning(f"Image generation failed for post {post.id}, continuing without image: {e}")
         
         # Update total cost
         post.update_total_cost()
