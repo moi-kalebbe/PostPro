@@ -253,9 +253,10 @@
             success: function (response) {
                 if (response.success) {
                     var plan = response.data.plan;
-                    // Show plan unless rejected - failed plans should still show items
+                    // Treat 'rejected' or 'failed' as no plan so user can regenerate
                     var showPlan = response.data.has_plan &&
-                        plan.status !== 'rejected';
+                        plan.status !== 'rejected' &&
+                        plan.status !== 'failed';
 
                     if (showPlan) {
                         var items = response.data.items;
