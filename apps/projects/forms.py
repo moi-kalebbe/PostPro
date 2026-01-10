@@ -39,9 +39,8 @@ IMAGE_MODEL_CHOICES = [
 ]
 
 RESEARCH_MODEL_CHOICES = [
-    ('perplexity/llama-3.1-sonar-large-128k-online', 'Perplexity Sonar Large (Padrão)'),
-    ('perplexity/llama-3.1-sonar-small-128k-online', 'Perplexity Sonar Small (Rápido)'),
-    ('perplexity/llama-3.1-sonar-huge-128k-online', 'Perplexity Sonar Huge (Completo)'),
+    ('perplexity/sonar', 'Perplexity Sonar (Padrão - Rápido)'),
+    ('perplexity/sonar-pro-search', 'Perplexity Sonar Pro (Avançado)'),
 ]
 
 class ProjectForm(forms.ModelForm):

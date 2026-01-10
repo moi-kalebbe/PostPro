@@ -42,7 +42,7 @@ class Project(models.Model):
     image_model = models.CharField(max_length=100, blank=True, null=True)
     research_model = models.CharField(
         max_length=100, 
-        default='perplexity/llama-3.1-sonar-large-128k-online',
+        default='perplexity/sonar',
         help_text='Modelo para pesquisa (ex: perplexity/sonar)'
     )
     
