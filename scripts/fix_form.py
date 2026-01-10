@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+# Script to fix form.html Django template
+import os
+
+form_content = '''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{% if is_edit %}Editar{% else %}Novo{% endif %} Projeto - PostPro{% endblock %}
@@ -163,3 +166,8 @@
     {% endif %}
 </div>
 {% endblock %}
+'''
+
+with open('templates/projects/form.html', 'w', encoding='utf-8') as f:
+    f.write(form_content)
+print('form.html OK')

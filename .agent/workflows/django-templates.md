@@ -57,3 +57,78 @@ grep -r "{% if .*[^ ]==.* %}" templates/
 grep -r "{% if .*==[^ ].* %}" templates/
 ```
 Se encontrar resultados, ADICIONE ESPAÇOS.
+
+---
+
+## 🔧 Como Corrigir Templates Corrompidos
+
+### Problema: Ferramentas de edição (VS Code, PowerShell) corrompem a sintaxe
+
+**Sintomas:**
+- `TemplateSyntaxError: Invalid block tag on line X: 'endif', expected 'endblock'`
+- `TemplateSyntaxError: Could not parse the remainder: '==value' from 'form.field.value==value'`
+- Caracteres estranhos no lugar de acentos (problema de encoding)
+
+### ✅ Solução: Usar script Python para reescrever o arquivo
+
+O método mais seguro é criar um script Python que escreva o template corretamente:
+
+```python
+# scripts/fix_template.py
+content = '''{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<select name="field" class="form-select">
+    {% for value, label in form.fields.field.choices %}
+    <option value="{{ value }}"{% if form.field.value == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>
+{% endblock %}
+'''
+
+with open('templates/path/to/template.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+print('OK')
+```
+
+Depois execute:
+```bash
+python scripts/fix_template.py
+```
+
+### ⚠️ NUNCA usar PowerShell para editar templates Django
+
+O PowerShell pode:
+- Quebrar encoding UTF-8
+- Adicionar BOM indesejado
+- Corromper caracteres especiais
+
+### Padrão correto para `<option>` com selected:
+
+```django
+<option value="{{ value }}"{% if form.field.value == value %} selected{% endif %}>{{ label }}</option>
+```
+
+**Regras:**
+1. SEM espaço entre `"{{ value }}"` e `{% if`
+2. COM espaço ao redor de `==`
+3. TUDO em uma única linha
+4. Espaço antes de `selected`
+
+### Padrão correto para checkbox com checked:
+
+```django
+<input type="checkbox" name="field" class="checkbox"{% if form.field.value %} checked{% endif %}>
+```
+
+---
+
+## Scripts de correção disponíveis
+
+Este projeto possui scripts prontos para corrigir templates:
+
+- `scripts/fix_settings.py` - Regenera `templates/dashboard/settings.html`
+- `scripts/fix_form.py` - Regenera `templates/projects/form.html`
+
+Para usar: `python scripts/fix_settings.py`

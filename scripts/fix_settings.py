@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+# Script to fix Django template syntax errors
+import os
+
+settings_content = '''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Configuracoes - PostPro{% endblock %}
@@ -126,3 +129,8 @@
     </div>
 </div>
 {% endblock %}
+'''
+
+with open('templates/dashboard/settings.html', 'w', encoding='utf-8') as f:
+    f.write(settings_content)
+print('settings.html OK')
