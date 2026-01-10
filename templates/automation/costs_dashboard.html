@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard de Custos - PostPro{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Dashboard de Custos AI</h1>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="card p-4">
+            <div class="text-xs text-muted font-bold uppercase tracking-wide">Custo Total</div>
+            <div class="text-2xl font-bold text-primary mt-1">${{ total_spent|floatformat:2 }}</div>
+        </div>
+        <div class="card p-4">
+            <div class="text-xs text-muted font-bold uppercase tracking-wide">Posts Gerados</div>
+            <div class="text-2xl font-bold mt-1">{{ total_posts }}</div>
+        </div>
+        <div class="card p-4">
+            <div class="text-xs text-muted font-bold uppercase tracking-wide">Tokens Totais</div>
+            <div class="text-2xl font-bold mt-1">{{ total_tokens|default:0|stringformat:"d" }}</div>
+        </div>
+        <div class="card p-4">
+            <div class="text-xs text-muted font-bold uppercase tracking-wide">Média por Post</div>
+            <div class="text-2xl font-bold mt-1">${{ avg_cost_per_post|floatformat:3 }}</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Project Breakdown -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Custo por Projeto</h3>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Projeto</th>
+                            <th class="text-right">Posts</th>
+                            <th class="text-right">Custo Total</th>
+                            <th class="text-right">Média</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in project_costs %}
+                        <tr>
+                            <td><strong>{{ p.project__name }}</strong></td>
+                            <td class="text-right">{{ p.posts }}</td>
+                            <td class="text-right font-medium">${{ p.cost|floatformat:2 }}</td>
+                            <td class="text-right text-muted">${{ p.avg_cost|floatformat:3 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center p-4">Sem dados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step Breakdown -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Custo por Etapa</h3>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Etapa</th>
+                            <th class="text-right">Execuções</th>
+                            <th class="text-right">Custo</th>
+                            <th class="text-right">% do Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in step_costs %}
+                        <tr>
+                            <td>
+                                <span
+                                    class="badge badge-{% if s.step == 'research' %}info{% elif s.step == 'strategy' %}warning{% elif s.step == 'article' %}success{% else %}gray{% endif %}">
+                                    {{ s.step|title }}
+                                </span>
+                            </td>
+                            <td class="text-right">{{ s.count }}</td>
+                            <td class="text-right font-medium">${{ s.total_cost|floatformat:3 }}</td>
+                            <td class="text-right text-muted">
+                                {% if total_spent > 0 %}
+                                {% widthratio s.total_cost total_spent 100 %}%
+                                {% else %}
+                                0%
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center p-4">Sem dados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

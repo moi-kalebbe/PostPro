@@ -34,6 +34,68 @@ class BaseAgent:
         self.openrouter = openrouter
         self.post = post
         self.project = post.project
+        self._site_profile = None
+        self._content_settings = None
+    
+    @property
+    def content_settings(self):
+        """Get content settings for the project (auto-creates if needed)."""
+        if self._content_settings is None:
+            self._content_settings = self.project.content_settings
+        return self._content_settings
+    
+    @property
+    def site_profile(self):
+        """Lazy load site profile for the project."""
+        if self._site_profile is None:
+            from apps.automation.models import SiteProfile
+            self._site_profile = SiteProfile.objects.filter(
+                project=self.project
+            ).order_by('-created_at').first()
+        return self._site_profile
+    
+    @property
+    def language(self) -> str:
+        """Get content language from ProjectContentSettings, SiteProfile, or default to pt-BR."""
+        # Priority 1: ProjectContentSettings
+        if self.content_settings and self.content_settings.language:
+            return self.content_settings.language
+        # Priority 2: SiteProfile
+        if self.site_profile and self.site_profile.language:
+            return self.site_profile.language
+        # Default
+        return 'pt-BR'
+    
+    @property
+    def site_context(self) -> str:
+        """Build site context string from SiteProfile."""
+        if not self.site_profile:
+            return ""
+        
+        context_parts = []
+        if self.site_profile.site_name:
+            context_parts.append(f"Site: {self.site_profile.site_name}")
+        if self.site_profile.categories:
+            category_names = [c.get('name', c) for c in self.site_profile.categories[:5]]
+            context_parts.append(f"Categories: {', '.join(category_names)}")
+        if self.site_profile.tone_analysis:
+            context_parts.append(f"Tone: {self.site_profile.tone_analysis[:100]}")
+        
+        return "\n".join(context_parts)
+    
+    @property
+    def custom_instructions(self) -> str:
+        """Get custom instructions from ProjectContentSettings."""
+        parts = []
+        if self.content_settings.custom_writing_style:
+            parts.append(f"Writing Style: {self.content_settings.custom_writing_style}")
+        if self.content_settings.custom_instructions:
+            parts.append(f"Additional Instructions: {self.content_settings.custom_instructions}")
+        if self.content_settings.avoid_topics:
+            avoid_list = self.content_settings.get_avoid_topics_list()
+            if avoid_list:
+                parts.append(f"Topics to AVOID: {', '.join(avoid_list)}")
+        return "\n".join(parts)
     
     def save_artifact(
         self,
@@ -64,36 +126,62 @@ class ResearchAgent(BaseAgent):
     """
     Agent 1: Research
     Gathers statistics, trends, and questions about the keyword.
+    Uses Perplexity Sonar for real-time web search when available.
     """
     
-    SYSTEM_PROMPT = """You are an expert content researcher. Your task is to gather relevant information about a topic for creating a comprehensive blog article.
+    def _get_system_prompt(self) -> str:
+        """Build system prompt with language specification."""
+        return f"""You are an expert content researcher. Your task is to gather relevant, current information about a topic for creating a comprehensive blog article.
+
+IMPORTANT: All research output must be in {self.language}.
 
 Return your research as VALID JSON ONLY (no markdown, no commentary) with this exact structure:
-{
-    "statistics": ["stat1", "stat2", "stat3"],
-    "trends": ["trend1", "trend2"],
-    "questions": ["question1", "question2", "question3"]
-}
+{{
+    "statistics": ["stat1 with source", "stat2 with source", "stat3 with source"],
+    "trends": ["current trend 1", "current trend 2"],
+    "questions": ["common question 1", "common question 2", "common question 3"],
+    "key_points": ["important point 1", "important point 2"]
+}}
 
 Requirements:
-- statistics: At least 3 relevant statistics or data points
+- statistics: At least 3 relevant statistics or data points (include sources when possible)
 - trends: At least 2 current trends related to the topic
 - questions: At least 3 questions that readers commonly ask about this topic
+- key_points: 2-3 key points that must be covered in the article
 
-Focus on accurate, relevant, and recent information."""
+Focus on accurate, relevant, and recent information. Prioritize data from the last 90 days."""
     
     def run(self) -> dict:
         """Execute research and return parsed data."""
+        # Detect model
+        research_model = self.project.get_research_model()
+        is_perplexity = "perplexity" in research_model.lower() or "sonar" in research_model.lower()
+
+        # Build context from site profile
+        site_context = self.site_context
+        context_section = f"\nSite Context:\n{site_context}" if site_context else ""
+        
         input_prompt = f"""Research the following topic for a blog article:
 
 Keyword: {self.post.keyword}
+Target Language: {self.language}
 Target Tone: {self.project.tone}
-Industry Context: Blog content for a professional website
+Industry Context: Blog content for a professional website{context_section}
 
-Provide comprehensive research data in JSON format."""
+Provide comprehensive, current research data in JSON format.
+All content must be written in {self.language}."""
+
+        # Perplexity Optimization
+        if is_perplexity:
+            input_prompt += f"""
+
+IMPORTANT: Use your online search capabilities to find the most RECENT information (last 30-90 days).
+Ensure the output is strictly valid JSON."""
+        
+        system_prompt = self._get_system_prompt()
         
         messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": input_prompt},
         ]
         
@@ -101,7 +189,7 @@ Provide comprehensive research data in JSON format."""
             parsed, result = self.openrouter.generate_with_schema(
                 messages=messages,
                 schema_class=ResearchSchema,
-                model=self.project.get_text_model(),
+                model=research_model,
             )
             
             output_dict = parsed.model_dump()
@@ -110,7 +198,7 @@ Provide comprehensive research data in JSON format."""
             self.save_artifact(
                 step=PostArtifact.Step.RESEARCH,
                 input_prompt=input_prompt,
-                system_prompt=self.SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 result=result,
                 parsed_output=output_dict,
             )
@@ -137,38 +225,51 @@ class StrategyAgent(BaseAgent):
     Creates title, meta description, and article structure.
     """
     
-    SYSTEM_PROMPT = """You are an expert SEO strategist and content planner. Your task is to create an optimized structure for a blog article.
+    def _get_system_prompt(self) -> str:
+        """Build system prompt with language and structure settings."""
+        settings = self.content_settings
+        min_h2 = settings.h2_sections_min
+        max_h2 = settings.h2_sections_max
+        
+        return f"""You are an expert SEO strategist and content planner. Your task is to create an optimized structure for a blog article.
+
+IMPORTANT: All output must be in {self.language}.
 
 Return your strategy as VALID JSON ONLY (no markdown, no commentary) with this exact structure:
-{
+{{
     "title": "SEO-optimized title (max 60 chars)",
     "meta_description": "Compelling meta description (max 160 chars)",
     "h2_sections": ["Section 1", "Section 2", "Section 3", "Section 4", "Section 5"]
-}
+}}
 
 Requirements:
-- title: Catchy, SEO-friendly, includes main keyword
-- meta_description: Compelling, includes keyword, encourages clicks
-- h2_sections: 5-8 logical sections for the article
+- title: Catchy, SEO-friendly, includes main keyword, written in {self.language}
+- meta_description: Compelling, includes keyword, encourages clicks, in {self.language}
+- h2_sections: {min_h2}-{max_h2} logical sections for the article, in {self.language}
 
 Focus on SEO best practices and reader engagement."""
     
     def run(self, research_data: dict) -> dict:
         """Execute strategy planning and return parsed data."""
+        system_prompt = self._get_system_prompt()
+        
         input_prompt = f"""Create an SEO strategy for this blog article:
 
 Keyword: {self.post.keyword}
+Target Language: {self.language}
 Target Tone: {self.project.tone}
 
 Research Data:
 - Statistics: {research_data.get('statistics', [])}
 - Trends: {research_data.get('trends', [])}
 - Questions: {research_data.get('questions', [])}
+- Key Points: {research_data.get('key_points', [])}
 
-Create an optimized article structure in JSON format."""
+Create an optimized article structure in JSON format.
+All content must be written in {self.language}."""
         
         messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": input_prompt},
         ]
         
@@ -185,7 +286,7 @@ Create an optimized article structure in JSON format."""
             self.save_artifact(
                 step=PostArtifact.Step.STRATEGY,
                 input_prompt=input_prompt,
-                system_prompt=self.SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 result=result,
                 parsed_output=output_dict,
             )
@@ -214,7 +315,15 @@ class ArticleAgent(BaseAgent):
     Writes the full article content in HTML.
     """
     
-    SYSTEM_PROMPT = """You are an expert blog writer. Write a comprehensive, engaging article based on the provided structure.
+    def _get_system_prompt(self) -> str:
+        """Build system prompt with language and word count from settings."""
+        settings = self.content_settings
+        min_words = settings.min_word_count
+        max_words = settings.max_word_count
+        
+        return f"""You are an expert blog writer. Write a comprehensive, engaging article based on the provided structure.
+
+CRITICAL: Write the ENTIRE article in {self.language}. Do NOT write in any other language.
 
 Requirements:
 - Write in HTML format (NO markdown)
@@ -223,9 +332,9 @@ Requirements:
 - Use <p> for paragraphs
 - Use <ul>/<li> for lists where appropriate
 - Use <strong> and <em> for emphasis
-- Write 1200-1800 words
+- Write {min_words}-{max_words} words
 - Include all provided sections
-- Incorporate statistics and answer reader questions naturally
+- Incorporate statistics naturally
 - DO NOT include <script> tags or any JavaScript
 - DO NOT include <style> tags
 
@@ -233,29 +342,66 @@ Return ONLY the HTML content, no commentary or explanation."""
     
     def run(self, research_data: dict, strategy_data: dict) -> str:
         """Execute article writing and return HTML content."""
+        system_prompt = self._get_system_prompt()
+        
         tone_instructions = {
             "formal": "Use professional, formal language appropriate for business contexts.",
             "casual": "Use friendly, conversational language that's easy to read.",
             "technical": "Use precise technical language with proper terminology.",
         }
         
+        # Build site context
+        site_context = self.site_context
+        context_section = f"\nSite Context:\n{site_context}" if site_context else ""
+        
+        # Build custom instructions section
+        custom_instr = self.custom_instructions
+        custom_section = f"\n\nCustom Instructions:\n{custom_instr}" if custom_instr else ""
+        
+        # Structural instructions (Conditional)
+        structural_instructions = []
+        if self.content_settings.include_summary:
+            structural_instructions.append("- INCLUDE a brief Executive Summary at the beginning.")
+        
+        if self.content_settings.include_faq:
+            structural_instructions.append("- INCLUDE a dedicated 'Frequently Asked Questions' section at the end (using <h2>).")
+        else:
+            structural_instructions.append("- Do NOT create a dedicated FAQ section. Address questions naturally if relevant.")
+
+        if self.content_settings.include_conclusion:
+            structural_instructions.append("- INCLUDE a dedicated Conclusion section.")
+        else:
+            structural_instructions.append("- Do NOT create a dedicated Conclusion section.")
+            
+        structural_str = "\n".join(structural_instructions)
+        
         input_prompt = f"""Write a complete blog article with this structure:
 
 Title: {strategy_data.get('title', self.post.keyword)}
+Language: {self.language}
+Target Word Count: {self.content_settings.min_word_count}-{self.content_settings.max_word_count} words
 Sections to cover:
 {chr(10).join(f'- {section}' for section in strategy_data.get('h2_sections', []))}
+
+Structural Requirements:
+{structural_str}
 
 Research to incorporate:
 - Key Statistics: {research_data.get('statistics', [])}
 - Industry Trends: {research_data.get('trends', [])}
 - Questions to Answer: {research_data.get('questions', [])}
+- Key Points: {research_data.get('key_points', [])}{context_section}{custom_section}
+
+Ensure the content flows logically and addresses the user's intent.
 
 Tone: {tone_instructions.get(self.project.tone, tone_instructions['casual'])}
+
+IMPORTANT: Write the entire article in {self.language}. Do NOT write in English unless {self.language} is en-US or en-GB.
 
 Write the article in clean HTML format."""
         
         messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": input_prompt},
         ]
         
@@ -278,7 +424,7 @@ Write the article in clean HTML format."""
         self.save_artifact(
             step=PostArtifact.Step.ARTICLE,
             input_prompt=input_prompt,
-            system_prompt=self.SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             result=result,
             parsed_output={"html": content, "validation_issues": issues},
         )
