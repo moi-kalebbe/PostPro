@@ -15,6 +15,9 @@ import json
 from apps.accounts.decorators import agency_required
 from apps.projects.models import Project
 from apps.automation.models import Post, BatchJob
+from .forms import AgencyBrandingForm
+from apps.projects.models import Project
+from apps.automation.models import Post, BatchJob
 
 
 @login_required
@@ -77,6 +80,17 @@ def dashboard_view(request):
     recent_batches = BatchJob.objects.filter(
         project__agency=agency
     ).select_related('project').order_by('-created_at')[:5]
+
+    # Costs by Step (using Artifacts)
+    from apps.automation.models import PostArtifact
+    step_costs = PostArtifact.objects.filter(
+        post__project__agency=agency,
+        is_active=True
+    ).values('step').annotate(
+        total_cost=Sum('cost'),
+        total_tokens=Sum('tokens_used'), 
+        count=Count('id')
+    ).order_by('step')
     
     context = {
         'agency': agency,
@@ -97,6 +111,7 @@ def dashboard_view(request):
         ]),
         'recent_posts': recent_posts,
         'recent_batches': recent_batches,
+        'step_costs': step_costs,
     }
     
     return render(request, 'dashboard/index.html', context)
@@ -149,6 +164,29 @@ def settings_view(request):
 
 @login_required
 @agency_required
+def branding_settings(request):
+    """Agency branding settings view."""
+    agency = request.user.agency
+    
+    if request.method == 'POST':
+        form = AgencyBrandingForm(request.POST, request.FILES, instance=agency)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Branding atualizado com sucesso!')
+            return redirect('dashboard:branding_settings')
+        else:
+            messages.error(request, 'Erro ao atualizar branding. Verifique o formulário.')
+    else:
+        form = AgencyBrandingForm(instance=agency)
+    
+    return render(request, 'agencies/branding_settings.html', {
+        'form': form,
+        'agency': agency
+    })
+
+
+@login_required
+@agency_required
 def usage_view(request):
     """Usage and cost reports."""
     agency = request.user.agency
@@ -159,26 +197,27 @@ def usage_view(request):
     start_date = end_date - timedelta(days=days)
     
     # Aggregate costs by project
-    project_costs = Project.objects.filter(
+    costs_by_project = Project.objects.filter(
         agency=agency
     ).annotate(
-        post_count=Count('posts'),
+        posts_count=Count('posts'),
+        tokens=Sum('posts__tokens_total'),
         text_cost=Sum('posts__text_generation_cost'),
         image_cost=Sum('posts__image_generation_cost'),
-        total=Sum('posts__total_cost')
-    ).order_by('-total')
+        total_cost=Sum('posts__total_cost')
+    ).order_by('-total_cost')
     
     # Daily breakdown
-    daily_costs = Post.objects.filter(
+    daily_breakdown = Post.objects.filter(
         project__agency=agency,
         created_at__gte=start_date
     ).annotate(
         date=TruncDate('created_at')
     ).values('date').annotate(
+        posts=Count('id'),
         text_cost=Sum('text_generation_cost'),
         image_cost=Sum('image_generation_cost'),
-        total=Sum('total_cost'),
-        count=Count('id')
+        total=Sum('total_cost')
     ).order_by('date')
     
     # Totals for period
@@ -192,22 +231,33 @@ def usage_view(request):
         total_image_cost=Sum('image_generation_cost'),
         total_cost=Sum('total_cost')
     )
+
+    # Prepare Type Chart Data
+    type_chart_data = {
+        'text': float(period_totals['total_text_cost'] or 0),
+        'image': float(period_totals['total_image_cost'] or 0)
+    }
     
     context = {
         'agency': agency,
         'days': days,
-        'project_costs': project_costs,
-        'daily_costs': daily_costs,
-        'period_totals': period_totals,
-        'chart_data': json.dumps([
+        'costs_by_project': costs_by_project,
+        'daily_breakdown': daily_breakdown,
+        'total_posts': period_totals['total_posts'] or 0,
+        'total_cost': period_totals['total_cost'] or 0,
+        'avg_cost': (period_totals['total_cost'] or 0) / (period_totals['total_posts'] or 1),
+        'total_tokens': period_totals['total_tokens'] or 0,
+        'daily_chart_data': json.dumps([
             {
                 'date': item['date'].isoformat(),
                 'text_cost': float(item['text_cost'] or 0),
                 'image_cost': float(item['image_cost'] or 0),
-                'total': float(item['total'] or 0)
+                'total': float(item['total'] or 0),
+                'cost': float(item['total'] or 0) # For simple line chart
             }
-            for item in daily_costs
+            for item in daily_breakdown
         ]),
+        'type_chart_data': json.dumps(type_chart_data)
     }
     
     return render(request, 'dashboard/usage.html', context)
