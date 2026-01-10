@@ -1,218 +1,470 @@
 /**
- * PostPro Admin CSS
+ * PostPro Admin CSS - Modern Design
+ * v2.2.1
  */
 
-/* General Wrapper */
+/* =========================================================================
+   CSS Variables
+   ========================================================================= */
+:root {
+    --postpro-primary: #2563eb;
+    --postpro-primary-hover: #1d4ed8;
+    --postpro-success: #059669;
+    --postpro-success-bg: #ecfdf5;
+    --postpro-error: #dc2626;
+    --postpro-error-bg: #fef2f2;
+    --postpro-warning: #d97706;
+    --postpro-warning-bg: #fffbeb;
+    --postpro-gray-50: #f9fafb;
+    --postpro-gray-100: #f3f4f6;
+    --postpro-gray-200: #e5e7eb;
+    --postpro-gray-300: #d1d5db;
+    --postpro-gray-500: #6b7280;
+    --postpro-gray-700: #374151;
+    --postpro-gray-900: #111827;
+    --postpro-radius: 8px;
+    --postpro-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --postpro-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --postpro-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* =========================================================================
+   General Wrapper
+   ========================================================================= */
 .postpro-wrapper {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 20px 20px 0 0;
 }
 
-/* Card Style */
+.postpro-wrapper h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--postpro-gray-900);
+    margin-bottom: 1.5rem;
+}
+
+/* =========================================================================
+   Cards
+   ========================================================================= */
 .postpro-card {
     background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
-    padding: 20px;
+    border: 1px solid var(--postpro-gray-200);
+    box-shadow: var(--postpro-shadow);
+    padding: 24px;
     margin-bottom: 20px;
-    border-radius: 4px;
+    border-radius: var(--postpro-radius);
 }
 
 .postpro-card h2 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.3em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+    margin: 0 0 20px 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--postpro-gray-900);
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--postpro-gray-100);
 }
 
-/* Progress Bar */
+.postpro-card p {
+    color: var(--postpro-gray-500);
+    line-height: 1.6;
+}
+
+.postpro-card hr {
+    border: none;
+    border-top: 1px solid var(--postpro-gray-200);
+    margin: 20px 0;
+}
+
+/* =========================================================================
+   Form Elements
+   ========================================================================= */
+.postpro-card .form-table th {
+    width: 160px;
+    padding: 15px 10px 15px 0;
+    font-weight: 500;
+    color: var(--postpro-gray-700);
+}
+
+.postpro-card .form-table td {
+    padding: 12px 0;
+}
+
+.postpro-card input[type="text"],
+.postpro-card input[type="password"],
+.postpro-card input[type="email"],
+.postpro-card input[type="url"],
+.postpro-card select,
+.postpro-card textarea {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--postpro-gray-900);
+    background: #fff;
+    border: 1px solid var(--postpro-gray-300);
+    border-radius: 6px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+}
+
+.postpro-card input[type="text"]:focus,
+.postpro-card input[type="password"]:focus,
+.postpro-card input[type="email"]:focus,
+.postpro-card input[type="url"]:focus,
+.postpro-card select:focus,
+.postpro-card textarea:focus {
+    outline: none;
+    border-color: var(--postpro-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.postpro-card .description {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--postpro-gray-500);
+}
+
+/* Keywords Input Grid */
+#keywords-inputs-settings input,
+#keywords-inputs input {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 10px;
+}
+
+/* =========================================================================
+   Buttons
+   ========================================================================= */
+.postpro-card .button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+
+.postpro-card .button-primary {
+    background: var(--postpro-primary);
+    border-color: var(--postpro-primary);
+    color: #fff;
+}
+
+.postpro-card .button-primary:hover,
+.postpro-card .button-primary:focus {
+    background: var(--postpro-primary-hover);
+    border-color: var(--postpro-primary-hover);
+    color: #fff;
+}
+
+.postpro-card .button-secondary {
+    background: #fff;
+    border: 1px solid var(--postpro-gray-300);
+    color: var(--postpro-gray-700);
+}
+
+.postpro-card .button-secondary:hover {
+    background: var(--postpro-gray-50);
+    border-color: var(--postpro-gray-300);
+    color: var(--postpro-gray-900);
+}
+
+.button.button-link-delete {
+    border: 1px solid var(--postpro-error);
+    background: #fff;
+    color: var(--postpro-error);
+}
+
+.button.button-link-delete:hover {
+    background: var(--postpro-error);
+    color: #fff;
+    border-color: var(--postpro-error);
+}
+
+/* Button with icon */
+.postpro-card .button .dashicons {
+    vertical-align: middle;
+    margin-right: 4px;
+    margin-top: -2px;
+}
+
+/* =========================================================================
+   Results Area
+   ========================================================================= */
+.postpro-result {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: var(--postpro-radius);
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.postpro-result::before {
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.postpro-result.success {
+    background: var(--postpro-success-bg);
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.postpro-result.success::before {
+    content: "✓";
+    color: var(--postpro-success);
+    font-weight: bold;
+}
+
+.postpro-result.error {
+    background: var(--postpro-error-bg);
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.postpro-result.error::before {
+    content: "✗";
+    color: var(--postpro-error);
+    font-weight: bold;
+}
+
+.postpro-result strong {
+    font-weight: 600;
+}
+
+/* =========================================================================
+   Progress Bar
+   ========================================================================= */
 .postpro-progress-bar {
-    background: #f0f0f1;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    height: 20px;
-    margin: 15px 0 5px;
+    background: var(--postpro-gray-100);
+    border: 1px solid var(--postpro-gray-200);
+    border-radius: 9999px;
+    height: 12px;
+    margin: 16px 0 8px;
     overflow: hidden;
 }
 
 .postpro-progress-fill {
-    background: #2271b1;
+    background: linear-gradient(90deg, var(--postpro-primary), #3b82f6);
     height: 100%;
     transition: width 0.3s ease;
+    border-radius: 9999px;
 }
 
 .postpro-progress-text {
-    font-size: 12px;
-    color: #646970;
+    font-size: 13px;
+    color: var(--postpro-gray-500);
     text-align: right;
 }
 
-/* Results Area */
-.postpro-result {
-    margin-top: 15px;
-    padding: 10px;
-    border-left: 4px solid transparent;
-    background: #fff;
-}
-
-.postpro-result.success {
-    border-left-color: #46b450;
-    background: #ecf7ed;
-}
-
-.postpro-result.error {
-    border-left-color: #dc3232;
-    background: #fbeaea;
-}
-
-/* Simulation Grid */
+/* =========================================================================
+   Simulation Grid
+   ========================================================================= */
 .postpro-simulation-results {
-    margin-top: 15px;
+    margin-top: 16px;
+}
+
+.postpro-simulation-results h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--postpro-gray-700);
 }
 
 .postpro-simulation-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 10px;
+    gap: 12px;
 }
 
 .postpro-simulation-item {
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 10px;
+    background: var(--postpro-gray-50);
+    border: 1px solid var(--postpro-gray-200);
+    padding: 16px;
     text-align: center;
-    border-radius: 4px;
+    border-radius: var(--postpro-radius);
 }
 
 .postpro-simulation-item .value {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #2271b1;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--postpro-primary);
 }
 
 .postpro-simulation-item .label {
-    font-size: 0.9em;
-    color: #666;
+    font-size: 12px;
+    color: var(--postpro-gray-500);
     text-transform: uppercase;
-    margin-top: 5px;
+    letter-spacing: 0.05em;
+    margin-top: 6px;
 }
 
-/* Editorial Plan Table */
+/* =========================================================================
+   Editorial Plan Table
+   ========================================================================= */
 #postpro-plan-content table {
     width: 100%;
     table-layout: fixed !important;
-    /* Enforce column widths */
     border-collapse: collapse;
 }
 
 #postpro-plan-content th,
 #postpro-plan-content td {
-    padding: 10px;
+    padding: 12px;
     vertical-align: top;
     text-align: left;
     white-space: normal !important;
-    /* Prevent collapsing */
     display: table-cell !important;
-    /* Fix for responsive themes overriding it */
+}
+
+#postpro-plan-content thead th {
+    background: var(--postpro-gray-50);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--postpro-gray-700);
+    border-bottom: 2px solid var(--postpro-gray-200);
+}
+
+#postpro-plan-content tbody td {
+    border-bottom: 1px solid var(--postpro-gray-100);
+}
+
+#postpro-plan-content tbody tr:hover {
+    background: var(--postpro-gray-50);
 }
 
 /* Column Widths */
 #postpro-plan-content th:nth-child(1) {
-    width: 60px !important;
+    width: 70px !important;
 }
 
-/* Day */
 #postpro-plan-content th:nth-child(2) {
     width: auto !important;
 }
 
-/* Title - takes remaining space */
 #postpro-plan-content th:nth-child(3) {
     width: 120px !important;
 }
 
-/* Status */
 #postpro-plan-content th:nth-child(4) {
-    width: 120px !important;
+    width: 130px !important;
 }
 
-/* Date */
 #postpro-plan-content th:nth-child(5) {
-    width: 220px !important;
+    width: 180px !important;
 }
 
-/* Actions - wider for buttons */
-
-/* Badges */
+/* =========================================================================
+   Status Badges
+   ========================================================================= */
 .postpro-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 9999px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.03em;
     line-height: 1;
     white-space: nowrap;
 }
 
 .postpro-badge.status-pending {
-    background: #f0f0f1;
-    color: #646970;
-    border: 1px solid #ccd0d4;
+    background: var(--postpro-gray-100);
+    color: var(--postpro-gray-500);
+    border: 1px solid var(--postpro-gray-300);
 }
 
 .postpro-badge.status-scheduled {
-    background: #e5f5fa;
-    color: #0f6c95;
-    border: 1px solid #bce1f1;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
 }
 
 .postpro-badge.status-generating {
-    background: #fff8e5;
-    color: #996800;
-    border: 1px solid #f0c33c;
+    background: var(--postpro-warning-bg);
+    color: var(--postpro-warning);
+    border: 1px solid #fcd34d;
+    animation: pulse-badge 2s infinite;
 }
 
 .postpro-badge.status-completed {
-    background: #ecf7ed;
-    color: #146c43;
-    border: 1px solid #8fae9b;
+    background: var(--postpro-success-bg);
+    color: var(--postpro-success);
+    border: 1px solid #6ee7b7;
 }
 
 .postpro-badge.status-failed {
-    background: #fbeaea;
-    color: #b32d2e;
-    border: 1px solid #ffb9b9;
+    background: var(--postpro-error-bg);
+    color: var(--postpro-error);
+    border: 1px solid #fca5a5;
 }
 
-/* Edit Mode Inputs */
+/* =========================================================================
+   Edit Mode
+   ========================================================================= */
 .edit-mode input.regular-text {
     width: 100% !important;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     box-sizing: border-box;
 }
 
-/* Action Buttons Header */
-#postpro-plan-actions button {
+.edit-mode .button-small {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+/* =========================================================================
+   Action Buttons Header
+   ========================================================================= */
+#postpro-plan-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+/* =========================================================================
+   Loading State
+   ========================================================================= */
+#postpro-plan-loading {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--postpro-gray-500);
+}
+
+#postpro-plan-loading .spinner {
     margin-right: 10px;
 }
 
-/* Button variants */
-.button.button-link-delete {
-    border: 1px solid #dc3232;
-    background: #fff;
-    color: #dc3232;
+/* =========================================================================
+   Empty State
+   ========================================================================= */
+#postpro-plan-empty {
+    padding: 60px 40px;
+    text-align: center;
+    background: var(--postpro-gray-50);
+    border-radius: var(--postpro-radius);
 }
 
-.button.button-link-delete:hover {
-    background: #dc3232;
-    color: #fff;
-    border-color: #dc3232;
+#postpro-plan-empty h2 {
+    border: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+    color: var(--postpro-gray-700);
 }
 
-/* Animations */
+#postpro-plan-empty p {
+    margin: 0 0 24px 0;
+}
+
+/* =========================================================================
+   Animations
+   ========================================================================= */
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -223,7 +475,75 @@
     }
 }
 
+@keyframes pulse-badge {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
 .spinner.is-active {
     display: inline-block;
-    margin-right: 10px;
+}
+
+/* Spinning icon for sync button */
+.dashicons.spin {
+    animation: spin 1.5s linear infinite;
+}
+
+/* =========================================================================
+   Responsive
+   ========================================================================= */
+@media screen and (max-width: 782px) {
+    .postpro-wrapper {
+        margin: 10px;
+    }
+
+    .postpro-card {
+        padding: 16px;
+    }
+
+    .postpro-simulation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #postpro-plan-content table,
+    #postpro-plan-content thead,
+    #postpro-plan-content tbody,
+    #postpro-plan-content th,
+    #postpro-plan-content td,
+    #postpro-plan-content tr {
+        display: block;
+    }
+
+    #postpro-plan-content thead {
+        display: none;
+    }
+
+    #postpro-plan-content tr {
+        margin-bottom: 16px;
+        border: 1px solid var(--postpro-gray-200);
+        border-radius: var(--postpro-radius);
+        padding: 12px;
+    }
+
+    #postpro-plan-content td {
+        padding: 6px 0;
+        border: none !important;
+    }
+
+    #postpro-plan-content td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--postpro-gray-500);
+        font-size: 11px;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 4px;
+    }
 }
