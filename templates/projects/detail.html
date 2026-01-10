@@ -77,7 +77,9 @@
             <h3 class="card-title">📅 Plano Editorial (30 dias)</h3>
             <div class="flex items-center gap-2">
                 {% if editorial_plan %}
-                <span class="badge badge-{% if editorial_plan.status == 'active' %}success{% elif editorial_plan.status == 'pending_approval' %}warning{% else %}info{% endif %}">{{ editorial_plan.get_status_display }}</span>
+                <span
+                    class="badge badge-{% if editorial_plan.status == 'active' %}success{% elif editorial_plan.status == 'pending_approval' %}warning{% else %}info{% endif %}">{{
+                    editorial_plan.get_status_display }}</span>
                 {% endif %}
                 {% if editorial_items %}
                 <button type="button" class="btn btn-error btn-sm" onclick="confirmDeleteAllItems()">
@@ -86,9 +88,10 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Bulk Actions Bar (hidden by default) -->
-        <div id="bulk-actions-bar" class="card-body border-b" style="display: none; background: var(--surface-elevated);">
+        <div id="bulk-actions-bar" class="card-body border-b"
+            style="display: none; background: var(--surface-elevated);">
             <div class="flex items-center justify-between">
                 <span id="selected-count" class="text-sm font-medium">0 itens selecionados</span>
                 <div class="flex gap-2">
@@ -101,7 +104,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="table-container">
             <table class="table">
                 <thead>
@@ -121,7 +124,8 @@
                     {% for item in editorial_items %}
                     <tr data-item-id="{{ item.id }}">
                         <td>
-                            <input type="checkbox" class="checkbox item-checkbox" value="{{ item.id }}" onchange="updateBulkBar()">
+                            <input type="checkbox" class="checkbox item-checkbox" value="{{ item.id }}"
+                                onchange="updateBulkBar()">
                         </td>
                         <td><strong>{{ item.day_index }}</strong></td>
                         <td>{{ item.title|truncatewords:8 }}</td>
@@ -139,7 +143,9 @@
                         </td>
                         <td class="text-muted">{{ item.scheduled_date|date:"d/m/Y" }}</td>
                         <td>
-                            <button type="button" class="btn btn-ghost btn-sm text-error" onclick="confirmDeleteItem('{{ item.id }}', '{{ item.title|escapejs }}')" title="Excluir">
+                            <button type="button" class="btn btn-ghost btn-sm text-error"
+                                onclick="confirmDeleteItem('{{ item.id }}', '{{ item.title|escapejs }}')"
+                                title="Excluir">
                                 🗑️
                             </button>
                         </td>
@@ -157,7 +163,8 @@
                                     Atualizar</button>
                             </div>
                             {% else %}
-                            Nenhum plano editorial ativo. Configure as palavras-chave no plugin WordPress para gerar um plano.
+                            Nenhum plano editorial ativo. Configure as palavras-chave no plugin WordPress para gerar um
+                            plano.
                             {% endif %}
                         </td>
                     </tr>
@@ -237,184 +244,293 @@
     </div>
 </div>
 
+<style>
+    /* Critical Modal Styles to fix visibility issue */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        display: none;
+        /* Controlled by JS */
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .modal.show {
+        display: flex !important;
+        opacity: 1;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: relative;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        z-index: 10000;
+        transform: scale(0.95);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .modal.show .modal-content {
+        transform: scale(1);
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        line-height: 1;
+        border-radius: 4px;
+    }
+
+    .modal-close:hover {
+        background: var(--surface-hover);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        color: var(--text-secondary);
+    }
+
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        background: var(--surface-elevated);
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+</style>
+
 <script>
-// API URLs - built manually to avoid Django template issues with UUID placeholders
-const PROJECT_ID = '{{ project.id }}';
-const DELETE_ITEM_URL_BASE = `/projects/${PROJECT_ID}/editorial-item/`;
-const BULK_DELETE_URL = `/projects/${PROJECT_ID}/editorial-items/bulk-delete/`;
-const CSRF_TOKEN = '{{ csrf_token }}';
+    // API URLs - built manually to avoid Django template issues with UUID placeholders
+    const PROJECT_ID = '{{ project.id }}';
+    const DELETE_ITEM_URL_BASE = `/projects/${PROJECT_ID}/editorial-item/`;
+    const BULK_DELETE_URL = `/projects/${PROJECT_ID}/editorial-items/bulk-delete/`;
+    const CSRF_TOKEN = '{{ csrf_token }}';
 
-// Selection State
-let selectedItems = new Set();
-let deleteCallback = null;
+    // Selection State
+    let selectedItems = new Set();
+    let deleteCallback = null;
 
-function toggleSelectAll(checkbox) {
-    const checkboxes = document.querySelectorAll('.item-checkbox');
-    checkboxes.forEach(cb => {
-        cb.checked = checkbox.checked;
-        if (checkbox.checked) {
-            selectedItems.add(cb.value);
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+            if (checkbox.checked) {
+                selectedItems.add(cb.value);
+            } else {
+                selectedItems.delete(cb.value);
+            }
+        });
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+        selectedItems = new Set([...checkboxes].map(cb => cb.value));
+        const bar = document.getElementById('bulk-actions-bar');
+        const count = document.getElementById('selected-count');
+
+        if (selectedItems.size > 0) {
+            bar.style.display = 'block';
+            count.textContent = `${selectedItems.size} item(ns) selecionado(s)`;
         } else {
-            selectedItems.delete(cb.value);
+            bar.style.display = 'none';
         }
+
+        // Update select-all checkbox
+        const allCheckboxes = document.querySelectorAll('.item-checkbox');
+        const selectAll = document.getElementById('select-all');
+        if (allCheckboxes.length > 0) {
+            selectAll.checked = checkboxes.length === allCheckboxes.length;
+            selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+        }
+    }
+
+    function clearSelection() {
+        selectedItems.clear();
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateBulkBar();
+    }
+
+    function openDeleteModal(message, callback) {
+        const modal = document.getElementById('delete-modal');
+        document.getElementById('delete-modal-message').textContent = message;
+        document.getElementById('delete-from-wp').checked = false;
+        deleteCallback = callback;
+
+        // Add show class for animation
+        modal.classList.add('show');
+        // Ensure display is flex (overriding inline style if needed)
+        modal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        modal.classList.remove('show');
+
+        // Wait for animation to finish before hiding
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 200);
+
+        deleteCallback = null;
+    }
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', function () {
+        if (deleteCallback) {
+            const deleteFromWp = document.getElementById('delete-from-wp').checked;
+            deleteCallback(deleteFromWp);
+        }
+        closeDeleteModal();
     });
-    updateBulkBar();
-}
 
-function updateBulkBar() {
-    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-    selectedItems = new Set([...checkboxes].map(cb => cb.value));
-    const bar = document.getElementById('bulk-actions-bar');
-    const count = document.getElementById('selected-count');
-    
-    if (selectedItems.size > 0) {
-        bar.style.display = 'block';
-        count.textContent = `${selectedItems.size} item(ns) selecionado(s)`;
-    } else {
-        bar.style.display = 'none';
+    function confirmDeleteItem(itemId, title) {
+        openDeleteModal(
+            `Tem certeza que deseja excluir "${title}"?`,
+            function (deleteFromWp) {
+                deleteItem(itemId, deleteFromWp);
+            }
+        );
     }
-    
-    // Update select-all checkbox
-    const allCheckboxes = document.querySelectorAll('.item-checkbox');
-    const selectAll = document.getElementById('select-all');
-    if (allCheckboxes.length > 0) {
-        selectAll.checked = checkboxes.length === allCheckboxes.length;
-        selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+
+    function confirmDeleteAllItems() {
+        const count = document.querySelectorAll('.item-checkbox').length;
+        openDeleteModal(
+            `Tem certeza que deseja excluir TODOS os ${count} itens do plano editorial?`,
+            function (deleteFromWp) {
+                deleteAllItems(deleteFromWp);
+            }
+        );
     }
-}
 
-function clearSelection() {
-    selectedItems.clear();
-    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
-    document.getElementById('select-all').checked = false;
-    updateBulkBar();
-}
+    function bulkDeleteItems() {
+        if (selectedItems.size === 0) return;
 
-function openDeleteModal(message, callback) {
-    document.getElementById('delete-modal-message').textContent = message;
-    document.getElementById('delete-modal').style.display = 'flex';
-    document.getElementById('delete-from-wp').checked = false;
-    deleteCallback = callback;
-}
-
-function closeDeleteModal() {
-    document.getElementById('delete-modal').style.display = 'none';
-    deleteCallback = null;
-}
-
-document.getElementById('confirm-delete-btn').addEventListener('click', function() {
-    if (deleteCallback) {
-        const deleteFromWp = document.getElementById('delete-from-wp').checked;
-        deleteCallback(deleteFromWp);
+        openDeleteModal(
+            `Tem certeza que deseja excluir ${selectedItems.size} item(ns) selecionado(s)?`,
+            function (deleteFromWp) {
+                deleteBulkItems([...selectedItems], deleteFromWp);
+            }
+        );
     }
-    closeDeleteModal();
-});
 
-function confirmDeleteItem(itemId, title) {
-    openDeleteModal(
-        `Tem certeza que deseja excluir "${title}"?`,
-        function(deleteFromWp) {
-            deleteItem(itemId, deleteFromWp);
-        }
-    );
-}
-
-function confirmDeleteAllItems() {
-    const count = document.querySelectorAll('.item-checkbox').length;
-    openDeleteModal(
-        `Tem certeza que deseja excluir TODOS os ${count} itens do plano editorial?`,
-        function(deleteFromWp) {
-            deleteAllItems(deleteFromWp);
-        }
-    );
-}
-
-function bulkDeleteItems() {
-    if (selectedItems.size === 0) return;
-    
-    openDeleteModal(
-        `Tem certeza que deseja excluir ${selectedItems.size} item(ns) selecionado(s)?`,
-        function(deleteFromWp) {
-            deleteBulkItems([...selectedItems], deleteFromWp);
-        }
-    );
-}
-
-async function deleteItem(itemId, deleteFromWp) {
-    try {
-        const response = await fetch(`${DELETE_ITEM_URL_BASE}${itemId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': CSRF_TOKEN
-            },
-            body: JSON.stringify({ delete_from_wordpress: deleteFromWp })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            document.querySelector(`tr[data-item-id="${itemId}"]`).remove();
-            showToast('Item excluído com sucesso', 'success');
-        } else {
-            showToast(data.message || 'Erro ao excluir', 'error');
-        }
-    } catch (error) {
-        showToast('Erro ao excluir item', 'error');
-        console.error(error);
-    }
-}
-
-async function deleteBulkItems(itemIds, deleteFromWp) {
-    try {
-        const response = await fetch(BULK_DELETE_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': CSRF_TOKEN
-            },
-            body: JSON.stringify({ item_ids: itemIds, delete_from_wordpress: deleteFromWp })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            itemIds.forEach(id => {
-                const row = document.querySelector(`tr[data-item-id="${id}"]`);
-                if (row) row.remove();
+    async function deleteItem(itemId, deleteFromWp) {
+        try {
+            const response = await fetch(`${DELETE_ITEM_URL_BASE}${itemId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify({ delete_from_wordpress: deleteFromWp })
             });
-            clearSelection();
-            showToast(`${data.deleted_count} item(ns) excluído(s)`, 'success');
-        } else {
-            showToast(data.message || 'Erro ao excluir', 'error');
+
+            const data = await response.json();
+            if (data.success) {
+                document.querySelector(`tr[data-item-id="${itemId}"]`).remove();
+                showToast('Item excluído com sucesso', 'success');
+            } else {
+                showToast(data.message || 'Erro ao excluir', 'error');
+            }
+        } catch (error) {
+            showToast('Erro ao excluir item', 'error');
+            console.error(error);
         }
-    } catch (error) {
-        showToast('Erro ao excluir itens', 'error');
-        console.error(error);
     }
-}
 
-async function deleteAllItems(deleteFromWp) {
-    const allIds = [...document.querySelectorAll('.item-checkbox')].map(cb => cb.value);
-    await deleteBulkItems(allIds, deleteFromWp);
-}
+    async function deleteBulkItems(itemIds, deleteFromWp) {
+        try {
+            const response = await fetch(BULK_DELETE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify({ item_ids: itemIds, delete_from_wordpress: deleteFromWp })
+            });
 
-function showToast(message, type) {
-    // Simple toast implementation
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; z-index: 9999; animation: slideIn 0.3s ease;';
-    toast.style.background = type === 'success' ? 'var(--success)' : 'var(--error)';
-    toast.style.color = 'white';
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
+            const data = await response.json();
+            if (data.success) {
+                itemIds.forEach(id => {
+                    const row = document.querySelector(`tr[data-item-id="${id}"]`);
+                    if (row) row.remove();
+                });
+                clearSelection();
+                showToast(`${data.deleted_count} item(ns) excluído(s)`, 'success');
+            } else {
+                showToast(data.message || 'Erro ao excluir', 'error');
+            }
+        } catch (error) {
+            showToast('Erro ao excluir itens', 'error');
+            console.error(error);
+        }
+    }
 
-function copyToClipboard(text, btn) {
-    navigator.clipboard.writeText(text).then(() => {
-        const original = btn.textContent;
-        btn.textContent = 'Copiado!';
-        setTimeout(() => btn.textContent = original, 2000);
-    });
-}
+    async function deleteAllItems(deleteFromWp) {
+        const allIds = [...document.querySelectorAll('.item-checkbox')].map(cb => cb.value);
+        await deleteBulkItems(allIds, deleteFromWp);
+    }
+
+    function showToast(message, type) {
+        // Simple toast implementation
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; z-index: 9999; animation: slideIn 0.3s ease;';
+        toast.style.background = type === 'success' ? 'var(--success)' : 'var(--error)';
+        toast.style.color = 'white';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.textContent;
+            btn.textContent = 'Copiado!';
+            setTimeout(() => btn.textContent = original, 2000);
+        });
+    }
 </script>
 {% endblock %}
