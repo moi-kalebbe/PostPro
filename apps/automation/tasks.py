@@ -635,31 +635,19 @@ def generate_post_from_plan_item(self, item_id: str):
         # Run full AI pipeline
         openrouter = OpenRouterService(api_key)
         
-        text_model = project.get_text_model()
-        image_model = project.get_image_model()
-        
-        # Run pipeline
-        result = run_full_pipeline(
-            keyword=item.keyword_focus,
-            openrouter_service=openrouter,
-            text_model=text_model,
-            image_model=image_model,
-            project=project
+        # run_full_pipeline populates the post object directly
+        run_full_pipeline(
+            post=post,
+            openrouter=openrouter,
+            generate_image=True,
         )
         
-        # Update post with generated content
-        post.title = result.get('title', item.title)
-        post.content = result.get('content', '')
-        post.meta_description = result.get('meta_description', '')
-        post.featured_image_url = result.get('featured_image_url', '')
-        post.research_data = result.get('research_data', {})
-        post.strategy_data = result.get('strategy_data', {})
-        
-        # Generate SEO data
+        # Post is already populated by the pipeline
+        # Add SEO data from editorial plan item
         post.seo_data = {
             'keyword': item.keyword_focus,
-            'seo_title': result.get('title', item.title),
-            'seo_description': result.get('meta_description', ''),
+            'seo_title': post.title,
+            'seo_description': post.meta_description,
             'cluster': item.cluster,
             'search_intent': item.search_intent
         }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PostPro
  * Description: Conecta seu site WordPress ao PostPro para geração e publicação automática de conteúdo.
- * Version: 2.2.0
+ * Version: 2.2.1
  * Author: Moisés Kalebbe
  * License: GPLv2 or later
  */
@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('POSTPRO_API_BASE', 'https://postpro-api.moiseskalebbe.com/api/v1');
+define('POSTPRO_API_BASE', 'https://postpro.nuvemchat.com/api/v1');
 
 class PostPro_Plugin {
     private static $instance = null;
@@ -77,7 +77,7 @@ class PostPro_Plugin {
     public function render_settings_page() {
         ?>
         <div class="wrap postpro-wrapper">
-            <h1>Configurações PostPro (v2.2.0)</h1>
+            <h1>Configurações PostPro (v2.2.1)</h1>
             
             <!-- Connection Card -->
             <div class="card postpro-card">
@@ -212,8 +212,8 @@ class PostPro_Plugin {
             return;
         }
         
-        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.2.0');
-        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.2.0', true);
+        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.2.1');
+        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.2.1', true);
         
         wp_localize_script('postpro-admin-js', 'postproAdmin', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
