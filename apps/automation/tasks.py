@@ -615,22 +615,37 @@ def generate_post_from_plan_item(self, item_id: str):
         return
     
     try:
-        # Create Post instance
-        post = Post.objects.create(
-            project=project,
-            keyword=item.keyword_focus,
-            title=item.title,
-            external_id=item.external_id,
-            status=Post.Status.GENERATING,
-            post_status='future',
-            scheduled_at=item.scheduled_date
-        )
-        
-        # Link to plan item
-        item.post = post
-        item.save()
-        
-        logger.info(f"Created post {post.id} for item {item.id}")
+        # Check if post already exists for this item (retry scenario)
+        if item.post_id:
+            post = item.post
+            logger.info(f"Using existing post {post.id} for item {item.id}")
+        else:
+            # Convert scheduled_date (DateField) to scheduled_at (DateTimeField) with timezone
+            from django.utils import timezone as tz
+            from datetime import datetime, time
+            
+            scheduled_datetime = None
+            if item.scheduled_date:
+                scheduled_datetime = tz.make_aware(
+                    datetime.combine(item.scheduled_date, time(9, 0, 0))  # Default to 9:00 AM
+                )
+            
+            # Create Post instance
+            post = Post.objects.create(
+                project=project,
+                keyword=item.keyword_focus,
+                title=item.title,
+                external_id=item.external_id,
+                status=Post.Status.GENERATING,
+                post_status='future',
+                scheduled_at=scheduled_datetime
+            )
+            
+            # Link to plan item
+            item.post = post
+            item.save()
+            
+            logger.info(f"Created post {post.id} for item {item.id}")
         
         # Run full AI pipeline
         openrouter = OpenRouterService(api_key)
