@@ -23,6 +23,9 @@ urlpatterns = [
     path('batches/<uuid:batch_id>/delete/', views.batch_delete_view, name='batch_delete'),
     path('batches/bulk-delete/', views.batches_bulk_delete_view, name='batches_bulk_delete'),
     
+    # Costs
+    path('costs/', views.costs_dashboard_view, name='costs_dashboard'),
+    
     # REMOVED: CSV Upload feature - keywords now sent via WordPress plugin
     # path('projects/<uuid:project_id>/batch-upload/', views.batch_upload_submit_view, name='batch_upload_submit'),
 ]

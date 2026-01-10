@@ -4,6 +4,173 @@
  */
 
 /* ============================================
+   CORREÇÃO DE EMERGÊNCIA - OVERFLOW MOBILE
+   ============================================ */
+
+/* Força contenção global */
+* {
+  box-sizing: border-box !important;
+}
+
+html {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+}
+
+body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Container seguro forçado */
+.page-wrapper-mobile-safe {
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  padding-inline: var(--spacing-sm) !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 1024px) {
+
+  /* Layout reset: disable flex/grid parent effects */
+  .layout {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Force Sidebar to be out of flow and hidden by default */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 280px !important;
+    height: 100vh !important;
+    z-index: 1100 !important;
+    /* Higher than header */
+    transition: left 0.3s ease !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Show sidebar when active (toggled by JS) */
+  .sidebar.active {
+    left: 0 !important;
+  }
+
+  /* Reset Main Content positioning */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-height: 100vh;
+  }
+}
+
+/* Mobile: Forçar elementos a respeitarem limite */
+@media (max-width: 639px) {
+
+  /* Todos os containers */
+  .container,
+  .container-safe,
+  .main-content>div,
+  .page-content,
+  section,
+  article {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Grids e Flexbox */
+  .stats-grid,
+  .grid-responsive,
+  .grid-responsive-2,
+  .grid-responsive-3,
+  .grid-responsive-4,
+  [class*="grid"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    /* FORÇA 1 COLUNA */
+    gap: var(--spacing-sm) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Cards */
+  .card,
+  .stat-card,
+  .metric-card,
+  [class*="card"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+    margin-inline: 0 !important;
+  }
+
+  /* Formulários */
+  form,
+  .form-group,
+  .form-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Tabelas */
+  table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Imagens e mídia */
+  img,
+  video,
+  iframe {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Remove min-width problemáticos */
+  * {
+    min-width: 0 !important;
+    min-width: auto !important;
+  }
+
+  /* Títulos e textos longos */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ============================================
    CSS Variables - Ecomiq Design System
    ============================================ */
 :root {

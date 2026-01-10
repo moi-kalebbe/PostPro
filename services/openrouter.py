@@ -58,6 +58,7 @@ class ResearchSchema(BaseModel):
     statistics: list[str] = Field(..., min_length=3)
     trends: list[str] = Field(..., min_length=2)
     questions: list[str] = Field(..., min_length=3)
+    key_points: list[str] = Field(default=[], description="Key points to cover in the article")
 
 
 class StrategySchema(BaseModel):

@@ -525,3 +525,53 @@ def batches_bulk_delete_view(request):
         'success': True,
         'message': f'{deleted_count} job(s) deletado(s)',
     })
+
+
+@login_required
+@agency_required
+def costs_dashboard_view(request):
+    """
+    Dashboard de custos de IA.
+    Mostra gastos por projeto, tokens e detalhamento por etapa.
+    """
+    from django.db.models import Sum, Count, Avg
+    
+    agency_projects = request.user.agency.projects.all()
+    
+    # 1. Total Costs Summary
+    total_stats = Post.objects.filter(project__in=agency_projects).aggregate(
+        total_spent=Sum('total_cost'),
+        total_tokens=Sum('tokens_total'),
+        total_posts=Count('id')
+    )
+    
+    # 2. Costs by Project
+    project_costs = Post.objects.filter(project__in=agency_projects).values(
+        'project__name'
+    ).annotate(
+        cost=Sum('total_cost'),
+        posts=Count('id'),
+        avg_cost=Avg('total_cost')
+    ).order_by('-cost')
+    
+    # 3. Costs by Step (using Artifacts)
+    step_costs = PostArtifact.objects.filter(
+        post__project__in=agency_projects,
+        is_active=True
+    ).values('step').annotate(
+        total_cost=Sum('cost'),
+        total_tokens=Sum('tokens_used'), 
+        count=Count('id')
+    ).order_by('step')
+    
+    context = {
+        'total_spent': total_stats['total_spent'] or 0,
+        'total_tokens': total_stats['total_tokens'] or 0,
+        'total_posts': total_stats['total_posts'] or 0,
+        'avg_cost_per_post': (total_stats['total_spent'] or 0) / (total_stats['total_posts'] or 1) if total_stats['total_posts'] else 0,
+        'project_costs': project_costs,
+        'step_costs': step_costs,
+        'active_tab': 'costs',
+    }
+    
+    return render(request, 'automation/costs_dashboard.html', context)
