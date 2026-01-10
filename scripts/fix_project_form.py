@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+
+import os
+
+content = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{% if is_edit %}Editar{% else %}Novo{% endif %} Projeto - PostPro{% endblock %}
@@ -259,4 +262,10 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
+{% endblock %}"""
+
+file_path = os.path.join("templates", "projects", "form.html")
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print(f"File {file_path} rewritten successfully.")

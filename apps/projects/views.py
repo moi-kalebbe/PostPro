@@ -57,6 +57,13 @@ def project_create_view(request):
                 project.set_wordpress_password(password)
             
             project.save()
+            
+            # Save extra content settings
+            settings = project.content_settings
+            settings.min_word_count = form.cleaned_data.get('min_word_count', 1200)
+            settings.max_word_count = form.cleaned_data.get('max_word_count', 2000)
+            settings.save()
+
             messages.success(request, f'Projeto "{project.name}" criado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
     else:
@@ -130,6 +137,13 @@ def project_edit_view(request, project_id):
                 project.set_wordpress_password(password)
             
             project.save()
+            
+            # Save extra content settings
+            settings = project.content_settings
+            settings.min_word_count = form.cleaned_data.get('min_word_count', 1200)
+            settings.max_word_count = form.cleaned_data.get('max_word_count', 2000)
+            settings.save()
+
             messages.success(request, 'Projeto atualizado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
     else:

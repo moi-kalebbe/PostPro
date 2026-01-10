@@ -4,7 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}PostPro{% endblock %}</title>
+    <title>{% block title %}{{ agency_name|default:'PostPro' }}{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="{{ agency_favicon }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ agency_favicon }}">
     <meta name="description"
         content="{% block description %}PostPro - Automação de conteúdo WordPress com IA{% endblock %}">
 
@@ -18,6 +22,27 @@
     <link rel="stylesheet" href="{% load static %}{% static 'css/main.css' %}">
 
     {% block extra_css %}{% endblock %}
+
+    <!-- Dynamic Branding Colors -->
+    <style>
+        :root {
+            --primary-color: {
+                    {
+                    agency_primary_color|default: '#FF6B35'
+                }
+            }
+
+            ;
+
+            --secondary-color: {
+                    {
+                    agency_secondary_color|default: '#004E89'
+                }
+            }
+
+            ;
+        }
+    </style>
 </head>
 
 <body>
@@ -33,7 +58,16 @@
                     <line x1="3" y1="18" x2="21" y2="18"></line>
                 </svg>
             </button>
-            <div class="logo-text">PostPro</div>
+            </button>
+            <div class="mobile-logo-container">
+                {% if agency_logo_current %}
+                <img src="{{ agency_logo_current }}" alt="{{ agency_name }}" class="mobile-logo brand-logo"
+                    data-logo-light="{{ agency_logo_light|default:'' }}"
+                    data-logo-dark="{{ agency_logo_dark|default:'' }}" style="height: 32px;">
+                {% else %}
+                <div class="logo-text">{{ agency_name }}</div>
+                {% endif %}
+            </div>
         </header>
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
 

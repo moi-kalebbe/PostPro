@@ -1,15 +1,19 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Login - PostPro{% endblock %}
+{% block title %}Login - {{ agency_name|default:'PostPro' }}{% endblock %}
 
 {% block body %}
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-header">
             <div class="auth-logo">
+                {% if agency_logo_current %}
+                <img src="{{ agency_logo_current }}" alt="{{ agency_name }}" style="max-height: 40px;">
+                {% else %}
                 <span class="auth-logo-icon">P</span>
-                <span>PostPro</span>
+                <span>{{ agency_name|default:'PostPro' }}</span>
+                {% endif %}
             </div>
             <p class="text-muted mb-0">Automação de conteúdo com IA</p>
         </div>

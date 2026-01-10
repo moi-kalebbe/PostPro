@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+
+import os
+
+content = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Configuracoes - {{ agency_name }}{% endblock %}
@@ -153,4 +156,10 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock %}"""
+
+file_path = os.path.join("templates", "dashboard", "settings.html")
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print(f"File {file_path} rewritten successfully.")

@@ -3,9 +3,11 @@
  */
 
 // Theme Toggle
+// Theme Toggle
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    updateLogo(savedTheme);
 }
 
 function toggleTheme() {
@@ -13,6 +15,28 @@ function toggleTheme() {
     const newTheme = current === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
+
+    // Update Logo
+    updateLogo(newTheme);
+
+    // Update Cookie for backend
+    document.cookie = `theme=${newTheme};path=/;max-age=31536000`; // 1 year
+}
+
+function updateLogo(theme) {
+    const logos = document.querySelectorAll('.brand-logo');
+
+    logos.forEach(logo => {
+        // Theme Light -> Logo Light (Dark Color)
+        // Theme Dark -> Logo Dark (Light Color)
+        const newSrc = theme === 'light' ? logo.dataset.logoLight : logo.dataset.logoDark;
+
+        console.log(`Updating logo [${logo.id || 'class'}] to theme ${theme}:`, newSrc);
+
+        if (newSrc && newSrc !== 'None' && newSrc !== '') {
+            logo.src = newSrc;
+        }
+    });
 }
 
 // Initialize on load

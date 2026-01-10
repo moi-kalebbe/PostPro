@@ -1,0 +1,161 @@
+
+import os
+
+content = """{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configurações de Branding - {{ agency_name }}{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Configurações de Branding</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Personalização da Marca</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                {# Nome da Empresa #}
+                <div class="mb-5">
+                    <h4 class="text-base font-medium mb-3">Identificação</h4>
+                    <div class="form-group">
+                        <label for="{{ form.display_name.id_for_label }}" class="form-label">Nome da Agência</label>
+                        {{ form.display_name }}
+                        <small class="form-text text-muted">Este nome será exibido no topo do menu lateral.</small>
+                    </div>
+                </div>
+
+                <hr class="my-5 border-gray-100">
+
+                {# Logos #}
+                <div class="mb-5">
+                    <h4 class="text-base font-medium mb-3">Logotipos</h4>
+                    <div class="alert alert-info mb-4">
+                        <i class="me-2" data-feather="info"></i>
+                        Para que a troca de tema (Claro/Escuro) funcione corretamente, envie as duas versões do seu logo.
+                    </div>
+
+                    <div class="row g-5">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.logo_light.id_for_label }}" class="form-label">Logo para Fundo CLARO (Tema Light)</label>
+                                <div class="mb-2">
+                                    {{ form.logo_light }}
+                                </div>
+                                <small class="form-text text-muted mb-2 d-block">Recomendado: Logo com cores escuras.</small>
+                                
+                                <div class="p-3 border rounded bg-white mt-2">
+                                    <p class="text-xs text-muted mb-2">Preview Fundo Claro:</p>
+                                    {% if agency.logo_light %}
+                                        <img id="preview-logo-light" src="{{ agency.logo_light.url }}" alt="Logo Light" style="max-height: 50px; max-width: 100%;">
+                                    {% else %}
+                                        <div class="text-muted text-sm italic py-2">Nenhum logo configurado</div>
+                                        <img id="preview-logo-light" src="" style="max-height: 50px; display: none;">
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.logo_dark.id_for_label }}" class="form-label">Logo para Fundo ESCURO (Tema Dark)</label>
+                                <div class="mb-2">
+                                    {{ form.logo_dark }}
+                                </div>
+                                <small class="form-text text-muted mb-2 d-block">Recomendado: Logo branco ou cores claras.</small>
+
+                                <div class="p-3 border rounded mt-2" style="background-color: #1a1a1a; border-color: #333 !important;">
+                                    <p class="text-xs text-muted mb-2">Preview Fundo Escuro:</p>
+                                    {% if agency.logo_dark %}
+                                        <img id="preview-logo-dark" src="{{ agency.logo_dark.url }}" alt="Logo Dark" style="max-height: 50px; max-width: 100%;">
+                                    {% else %}
+                                        <div class="text-muted text-sm italic py-2">Nenhum logo configurado</div>
+                                        <img id="preview-logo-dark" src="" style="max-height: 50px; display: none;">
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-5 border-gray-100">
+
+                {# Favicon #}
+                <div class="mb-5">
+                    <h4 class="text-base font-medium mb-3">Favicon</h4>
+                    <div class="form-group">
+                        <label for="{{ form.favicon.id_for_label }}" class="form-label">Ícone do Navegador</label>
+                        <div class="d-flex align-items-center gap-4">
+                            <div class="flex-grow-1">
+                                {{ form.favicon }}
+                                <small class="form-text text-muted">Formato .ico ou .png (32x32px)</small>
+                            </div>
+                            <div class="p-2 border rounded bg-light">
+                                {% if agency.favicon %}
+                                    <img id="preview-favicon" src="{{ agency.favicon.url }}" alt="Favicon" style="width: 32px; height: 32px;">
+                                {% else %}
+                                    <div style="width: 32px; height: 32px; background: #ddd; border-radius: 4px;"></div>
+                                    <img id="preview-favicon" src="" style="width: 32px; height: 32px; display: none;">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top">
+                    <button type="submit" class="btn btn-primary px-4">Salvar Configurações</button>
+                    <a href="{% url 'dashboard:settings' %}" class="btn btn-ghost ms-2">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function setupPreview(inputId, imgId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.addEventListener('change', function (e) {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById(imgId);
+                    if (img) {
+                        img.src = e.target.result;
+                        img.style.display = 'block';
+                        // Hide any 'no logo' text if present
+                        if(img.previousElementSibling && img.previousElementSibling.classList.contains('text-muted')) {
+                            img.previousElementSibling.style.display = 'none';
+                        }
+                    }
+                }
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setupPreview('{{ form.logo_light.id_for_label }}', 'preview-logo-light');
+        setupPreview('{{ form.logo_dark.id_for_label }}', 'preview-logo-dark');
+        setupPreview('{{ form.favicon.id_for_label }}', 'preview-favicon');
+    });
+</script>
+{% endblock %}"""
+
+file_path = os.path.join("templates", "agencies", "branding_settings.html")
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print(f"File {file_path} rewritten successfully.")

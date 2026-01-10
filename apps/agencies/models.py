@@ -11,6 +11,34 @@ from cryptography.fernet import Fernet, InvalidToken
 import requests
 
 
+
+from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
+
+def validate_image_size(file):
+    """Valida tamanho máximo de 2MB para logos e 500KB para favicon"""
+    limit_mb = 2 if 'logo' in file.name.lower() else 0.5
+    limit_bytes = limit_mb * 1024 * 1024
+    
+    if file.size > limit_bytes:
+        raise ValidationError(f'Arquivo muito grande. Máximo: {limit_mb}MB')
+
+def agency_logo_path(instance, filename):
+    """Path dinâmico: agencies/{agency_id}/logos/{filename}"""
+    import os
+    ext = os.path.splitext(filename)[1]
+    return f'agencies/{instance.id}/logos/logo_light{ext}'
+
+def agency_logo_dark_path(instance, filename):
+    import os
+    ext = os.path.splitext(filename)[1]
+    return f'agencies/{instance.id}/logos/logo_dark{ext}'
+
+def agency_favicon_path(instance, filename):
+    import os
+    ext = os.path.splitext(filename)[1]
+    return f'agencies/{instance.id}/favicon{ext}'
+
 class Agency(models.Model):
     """
     Agency (tenant) model.
@@ -56,6 +84,69 @@ class Agency(models.Model):
         choices=SubscriptionStatus.choices,
         default=SubscriptionStatus.ACTIVE
     )
+
+    # ===== BRANDING FIELDS =====
+    
+    # Nome customizado (exibido no painel)
+    display_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nome exibido no painel. Se vazio, usa o campo 'name'"
+    )
+    
+    # Logo Light (tema claro)
+    logo_light = models.ImageField(
+        upload_to=agency_logo_path,
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['png', 'jpg', 'jpeg', 'svg', 'webp']),
+            validate_image_size
+        ],
+        help_text="Logo para tema claro (PNG/SVG transparente, 200x50px recomendado)"
+    )
+    
+    # Logo Dark (tema escuro)
+    logo_dark = models.ImageField(
+        upload_to=agency_logo_dark_path,
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['png', 'jpg', 'jpeg', 'svg', 'webp']),
+            validate_image_size
+        ],
+        help_text="Logo para tema escuro (PNG/SVG transparente, 200x50px recomendado)"
+    )
+    
+    # Favicon
+    favicon = models.ImageField(
+        upload_to=agency_favicon_path,
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['png', 'ico']),
+            validate_image_size
+        ],
+        help_text="Favicon (ICO ou PNG, 32x32px ou 64x64px)"
+    )
+    
+    # Cores do tema (override das variáveis CSS)
+    primary_color = models.CharField(
+        max_length=7,
+        blank=True,
+        default='#FF6B35',
+        help_text="Cor primária em HEX (#FF6B35)"
+    )
+    
+    secondary_color = models.CharField(
+        max_length=7,
+        blank=True,
+        default='#004E89',
+        help_text="Cor secundária em HEX"
+    )
+    
+    # Meta
+    branding_updated_at = models.DateTimeField(auto_now=True)
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -68,7 +159,31 @@ class Agency(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return self.name
+        return self.get_display_name()
+    
+    def get_display_name(self):
+        """Retorna display_name ou fallback para name"""
+        return self.display_name or self.name
+    
+    def get_logo_url(self, theme='light'):
+        """Retorna URL do logo baseado no tema atual"""
+        logo = self.logo_dark if theme == 'dark' else self.logo_light
+        
+        if logo and hasattr(logo, 'url'):
+            return logo.url
+        
+        # Fallback para logo padrão PostPro
+        return f'/static/img/logo-{theme}.png'
+    
+    def get_favicon_url(self):
+        """Retorna URL do favicon ou padrão"""
+        if self.favicon and hasattr(self.favicon, 'url'):
+            return self.favicon.url
+        return '/static/img/favicon.ico'
+    
+    def has_custom_branding(self):
+        """Verifica se agência tem branding customizado"""
+        return bool(self.logo_light or self.logo_dark or self.favicon)
     
     def save(self, *args, **kwargs):
         if not self.slug:
