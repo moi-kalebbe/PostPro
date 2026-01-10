@@ -27,7 +27,7 @@
         {% endif %}
     </div>
 
-    <div class="grid grid-cols-3">
+    <div class="grid-responsive-3">
         {% for project in projects %}
         <div class="card project-card">
             <div class="project-card-header">
@@ -73,13 +73,10 @@
                 <a href="{% url 'projects:detail' project.id %}" class="btn btn-secondary btn-sm flex-1">
                     Ver Detalhes
                 </a>
-                <a href="{% url 'projects:batch_upload' project.id %}" class="btn btn-primary btn-sm flex-1">
-                    Upload CSV
-                </a>
             </div>
         </div>
         {% empty %}
-        <div class="card" style="grid-column: span 3;">
+        <div class="card">
             <div class="empty-state">
                 <svg class="empty-state-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

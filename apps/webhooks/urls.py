@@ -20,8 +20,8 @@ urlpatterns = [
     path('project/editorial-plan/item/<uuid:item_id>/approve', views.approve_plan_item_view, name='approve_plan_item'),
     path('project/keywords', views.save_keywords_view, name='save_keywords'),
     
-    # Batch operations
-    path('batch-upload', views.batch_upload_view, name='batch_upload'),
+    # REMOVED: CSV batch upload - keywords now sent via save_keywords endpoint
+    # path('batch-upload', views.batch_upload_view, name='batch_upload'),
     path('batch/<uuid:batch_id>/status', views.batch_status_view, name='batch_status'),
     
     # Post operations

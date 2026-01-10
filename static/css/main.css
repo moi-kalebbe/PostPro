@@ -459,21 +459,8 @@
 }
 
 /* ============================================
-   Responsive
+   Responsive - Handled by design-system.css
    ============================================ */
-@media (max-width: 1024px) {
-    .sidebar {
-        transform: translateX(-100%);
-    }
-
-    .sidebar.open {
-        transform: translateX(0);
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-}
 
 /* ============================================
    Print Styles

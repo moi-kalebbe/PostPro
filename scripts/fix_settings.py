@@ -1,7 +1,4 @@
-# Script to fix Django template syntax errors
-import os
-
-settings_content = '''{% extends 'base.html' %}
+content = '''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Configuracoes - PostPro{% endblock %}
@@ -16,7 +13,7 @@ settings_content = '''{% extends 'base.html' %}
         <h1 class="page-title">Configuracoes</h1>
     </div>
 
-    <div class="grid grid-cols-2">
+    <div class="grid-responsive-2">
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">OpenRouter API Key</h3>
@@ -132,5 +129,5 @@ settings_content = '''{% extends 'base.html' %}
 '''
 
 with open('templates/dashboard/settings.html', 'w', encoding='utf-8') as f:
-    f.write(settings_content)
-print('settings.html OK')
+    f.write(content)
+print('OK - settings.html fixed')

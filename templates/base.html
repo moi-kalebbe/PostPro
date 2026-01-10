@@ -1,27 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}PostPro{% endblock %}</title>
-    <meta name="description" content="{% block description %}PostPro - Automação de conteúdo WordPress com IA{% endblock %}">
-    
+    <meta name="description"
+        content="{% block description %}PostPro - Automação de conteúdo WordPress com IA{% endblock %}">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     <link rel="stylesheet" href="{% load static %}{% static 'css/design-system.css' %}">
     <link rel="stylesheet" href="{% load static %}{% static 'css/main.css' %}">
-    
+
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
     {% block body %}
     <div class="layout">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button id="sidebar-toggle" class="btn btn-ghost btn-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo-text">PostPro</div>
+        </header>
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
         {% block sidebar %}{% endblock %}
-        
+
         <main class="main-content">
             {% if messages %}
             <div class="alerts-container">
@@ -32,14 +49,41 @@
                 {% endfor %}
             </div>
             {% endif %}
-            
+
             {% block content %}{% endblock %}
         </main>
     </div>
     {% endblock %}
-    
+
     <!-- Scripts -->
     <script src="{% load static %}{% static 'js/main.js' %}"></script>
+    <script>
+        // Responsive Sidebar Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            function toggleSidebar() {
+                if (sidebar) sidebar.classList.toggle('active');
+                if (overlay) overlay.classList.toggle('active');
+                document.body.classList.toggle('sidebar-open');
+            }
+
+            if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+            if (overlay) overlay.addEventListener('click', toggleSidebar);
+
+            // Close on resize > desktop
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 1024) {
+                    if (sidebar) sidebar.classList.remove('active');
+                    if (overlay) overlay.classList.remove('active');
+                    document.body.classList.remove('sidebar-open');
+                }
+            });
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>
