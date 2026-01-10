@@ -13,7 +13,7 @@ from .models import Project, ProjectContentSettings
 TEXT_MODEL_CHOICES = [
     ('', '-- Usar padrão da agência --'),
     # Econômicos (Plano Básico)
-    ('deepseek/deepseek-v3', 'DeepSeek V3 (Econômico)'),
+    ('deepseek/deepseek-chat', 'DeepSeek Chat (Econômico)'),
     ('meta-llama/llama-3.1-70b-instruct', 'Llama 3.1 70B'),
     ('google/gemini-flash-1.5', 'Gemini Flash 1.5'),
     # Intermediários
