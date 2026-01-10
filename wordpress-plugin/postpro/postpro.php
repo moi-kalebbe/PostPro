@@ -317,7 +317,7 @@ class PostPro_Plugin {
     // =========================================================================
     
     public function ajax_test_connection() {
-        $this->proxy_api_request('GET', '/project/validate-license');
+        $this->proxy_api_request('GET', '/validate-license');
     }
     
     public function ajax_upload_csv() {
