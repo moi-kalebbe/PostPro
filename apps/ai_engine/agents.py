@@ -244,10 +244,10 @@ Return your strategy as VALID JSON ONLY (no markdown, no commentary) with this e
 
 Requirements:
 - title: Catchy, SEO-friendly, includes main keyword, written in {self.language}
-- meta_description: Compelling, includes keyword, encourages clicks, in {self.language}
+- meta_description: STRICTLY under 160 characters (aim for 130-150). It MUST be short. Includes keyword, encourages clicks, in {self.language}.
 - h2_sections: {min_h2}-{max_h2} logical sections for the article, in {self.language}
 
-Focus on SEO best practices and reader engagement."""
+Focus on SEO best practices and reader engagement. KEEP META DESCRIPTION SHORT."""
     
     def run(self, research_data: dict) -> dict:
         """Execute strategy planning and return parsed data."""
