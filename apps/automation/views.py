@@ -50,11 +50,18 @@ def posts_list_view(request):
     posts_page = paginator.get_page(page)
     
     # Projects for filter dropdown
-    projects = Project.objects.filter(agency=agency)
+    projects_qs = Project.objects.filter(agency=agency)
+    projects_list = []
+    for p in projects_qs:
+        projects_list.append({
+            'id': str(p.id),
+            'name': p.name,
+            'is_selected': str(p.id) == project_id
+        })
     
     context = {
         'posts': posts_page,
-        'projects': projects,
+        'projects': projects_list,
         'status_choices': Post.Status.choices,
         'project_filter': project_id,
         'status_filter': status_filter,

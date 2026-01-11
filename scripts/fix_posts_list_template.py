@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+
+import os
+
+content = """{% extends 'base.html' %}
 {% load static %}
 {# Syntax Fix applied: 2026-01-09 (Scripted v2 - Single line tags) #}
 
@@ -461,3 +464,9 @@
     </div>
 </div>
 {% endblock %}
+"""
+
+with open('templates/automation/posts_list.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print(f"Successfully fixed template at templates/automation/posts_list.html")
