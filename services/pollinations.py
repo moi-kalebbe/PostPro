@@ -139,7 +139,7 @@ class PollinationsService:
         
         encoded_prompt = urllib.parse.quote(prompt)
         query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
-        image_url = f"{POLLINATIONS_BASE_URL}/prompt/{encoded_prompt}?{query_string}"
+        image_url = f"{POLLINATIONS_BASE_URL}/prompt/{encoded_prompt}.jpg?{query_string}"
         
         logger.info(f"Generating Pollinations image with model {model}, size {width}x{height}")
         
