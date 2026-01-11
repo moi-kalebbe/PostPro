@@ -64,7 +64,7 @@ class ResearchSchema(BaseModel):
 class StrategySchema(BaseModel):
     """Strategy agent output schema."""
     title: str = Field(..., max_length=300)
-    meta_description: str = Field(..., max_length=160)
+    meta_description: str = Field(..., max_length=300)
     slug: str = Field(default="", description="URL-friendly slug")
     h2_sections: list[str] = Field(..., min_length=5, max_length=8)
     image_alt_text: str = Field(default="", description="Alt text for featured image")
