@@ -425,7 +425,7 @@ def send_to_postpro_plugin(
     Returns:
         dict with 'success', 'post_id', 'edit_url'
     """
-    endpoint = f"{site_url.rstrip('/')}/wp-json/postpro/v1/receive-post"
+    endpoint = f"{site_url.rstrip('/')}/wp-json/postpro/v1/create-post"
     
     headers = {
         "Content-Type": "application/json",
