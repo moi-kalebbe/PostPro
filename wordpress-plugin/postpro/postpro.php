@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PostPro
  * Description: Conecta seu site WordPress ao PostPro para geração e publicação automática de conteúdo.
- * Version: 2.3.0
+ * Version: 2.4.0
  * Author: Moisés Kalebbe
  * License: GPLv2 or later
  */
@@ -266,6 +266,11 @@ class PostPro_Plugin {
         }
         
         // Create Post
+        // Get slug from seo_data if available
+        $seo_data = isset($params['seo_data']) ? $params['seo_data'] : array();
+        $slug = isset($seo_data['slug']) ? sanitize_title($seo_data['slug']) : '';
+        $image_alt_text = isset($seo_data['image_alt_text']) ? sanitize_text_field($seo_data['image_alt_text']) : '';
+        
         $post_data = array(
             'post_title'    => sanitize_text_field($params['title']),
             'post_content'  => wp_kses_post($params['content']), // Allows HTML
@@ -273,6 +278,11 @@ class PostPro_Plugin {
             'post_author'   => get_current_user_id() ?: 1,
             'post_category' => array(), // Can map categories if sent
         );
+        
+        // Apply SEO-optimized slug if provided
+        if (!empty($slug)) {
+            $post_data['post_name'] = $slug;
+        }
         
         $post_id = wp_insert_post($post_data);
         
@@ -285,9 +295,9 @@ class PostPro_Plugin {
             update_post_meta($post_id, 'postpro_external_id', sanitize_text_field($params['external_id']));
         }
         
-        // Set Featured Image
+        // Set Featured Image with SEO alt text
         if (!empty($params['featured_image_url'])) {
-            $this->upload_featured_image($post_id, $params['featured_image_url']);
+            $this->upload_featured_image($post_id, $params['featured_image_url'], $image_alt_text);
         }
         
         // ===== INÍCIO: INTEGRAÇÃO SEO =====
@@ -306,16 +316,21 @@ class PostPro_Plugin {
         );
     }
     
-    private function upload_featured_image($post_id, $image_url) {
+    private function upload_featured_image($post_id, $image_url, $alt_text = '') {
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
         
-        $desc = "Featured image for post $post_id";
+        $desc = !empty($alt_text) ? $alt_text : "Featured image for post $post_id";
         $media_id = media_sideload_image($image_url, $post_id, $desc, 'id');
         
         if (!is_wp_error($media_id)) {
             set_post_thumbnail($post_id, $media_id);
+            
+            // Set alt text for SEO
+            if (!empty($alt_text)) {
+                update_post_meta($media_id, '_wp_attachment_image_alt', $alt_text);
+            }
         }
     }
     

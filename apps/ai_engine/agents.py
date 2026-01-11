@@ -231,7 +231,7 @@ class StrategyAgent(BaseAgent):
         min_h2 = settings.h2_sections_min
         max_h2 = settings.h2_sections_max
         
-        return f"""You are an expert SEO strategist and content planner. Your task is to create an optimized structure for a blog article.
+        return f"""You are an expert SEO strategist and content planner. Your task is to create an optimized structure for a blog article that will score 75+ on Rank Math SEO.
 
 IMPORTANT: All output must be in {self.language}.
 
@@ -239,15 +239,19 @@ Return your strategy as VALID JSON ONLY (no markdown, no commentary) with this e
 {{
     "title": "SEO-optimized title (max 60 chars)",
     "meta_description": "Compelling meta description (max 160 chars)",
-    "h2_sections": ["Section 1", "Section 2", "Section 3", "Section 4", "Section 5"]
+    "slug": "url-friendly-slug",
+    "h2_sections": ["Section 1", "Section 2", "Section 3", "Section 4", "Section 5"],
+    "image_alt_text": "Descriptive alt text for featured image"
 }}
 
-Requirements:
-- title: Catchy, SEO-friendly, includes main keyword, written in {self.language}
-- meta_description: STRICTLY under 160 characters (aim for 130-150). It MUST be short. Includes keyword, encourages clicks, in {self.language}.
-- h2_sections: {min_h2}-{max_h2} logical sections for the article, in {self.language}
+CRITICAL SEO Requirements:
+- title: MUST start with or contain the main keyword in the FIRST 50 characters. Max 60 chars total. In {self.language}.
+- meta_description: MUST include the main keyword. Keep 130-150 chars. Encourage clicks. In {self.language}.
+- slug: URL-friendly version of the keyword (lowercase, hyphens, no special chars). Example: "beach-tennis-tournament-rules"
+- h2_sections: {min_h2}-{max_h2} sections. At least 2 sections MUST include the keyword or a close variation.
+- image_alt_text: Describe the image topic, include keyword naturally. Example: "Jogadores de beach tennis em torneio"
 
-Focus on SEO best practices and reader engagement. KEEP META DESCRIPTION SHORT."""
+Focus on SEO best practices for Rank Math 75+ score."""
     
     def run(self, research_data: dict) -> dict:
         """Execute strategy planning and return parsed data."""
@@ -321,22 +325,27 @@ class ArticleAgent(BaseAgent):
         min_words = settings.min_word_count
         max_words = settings.max_word_count
         
-        return f"""You are an expert blog writer. Write a comprehensive, engaging article based on the provided structure.
+        return f"""You are an expert blog writer optimizing for Rank Math SEO 75+ score. Write a comprehensive, engaging article based on the provided structure.
 
 CRITICAL: Write the ENTIRE article in {self.language}. Do NOT write in any other language.
 
-Requirements:
+HTML Format Requirements:
 - Write in HTML format (NO markdown)
 - DO NOT include <h1> tags (title is added separately)
 - Use <h2> for section headings
 - Use <p> for paragraphs
 - Use <ul>/<li> for lists where appropriate
 - Use <strong> and <em> for emphasis
-- Write {min_words}-{max_words} words
+- DO NOT include <script> or <style> tags
+
+SEO CRITICAL Requirements (for Rank Math 75+ score):
+- The main KEYWORD must appear in the FIRST paragraph (first 10% of content)
+- The KEYWORD must appear in at least 2-3 H2 headings
+- Keyword density: Use keyword 1-1.5% throughout (naturally, not forced)
+- Include 2-3 external links to authoritative sources (use <a href="URL" target="_blank" rel="noopener">text</a>)
+- Write {min_words}-{max_words} words minimum
 - Include all provided sections
 - Incorporate statistics naturally
-- DO NOT include <script> tags or any JavaScript
-- DO NOT include <style> tags
 
 Return ONLY the HTML content, no commentary or explanation."""
     
