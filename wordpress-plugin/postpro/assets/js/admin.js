@@ -6,6 +6,7 @@
     'use strict';
 
     $(document).ready(function () {
+        console.log('PostPro Admin JS v2.3.0 loaded');
         initTestConnection();
         initCopyButtons();
         initSyncProfile();
@@ -15,7 +16,9 @@
 
     // Test Connection
     function initTestConnection() {
-        $('#postpro-test-connection').on('click', function () {
+        $('#postpro-test-connection').on('click', function (e) {
+            e.preventDefault();
+            console.log('Test Connection clicked');
             var $btn = $(this);
             var $result = $('#postpro-connection-result');
 
@@ -74,7 +77,9 @@
 
     // Sync Profile
     function initSyncProfile() {
-        $('#postpro-sync-profile').on('click', function () {
+        $('#postpro-sync-profile').on('click', function (e) {
+            e.preventDefault();
+            console.log('Sync Profile clicked');
             var $btn = $(this);
             var $result = $('#postpro-sync-result');
 
