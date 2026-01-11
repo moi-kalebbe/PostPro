@@ -564,6 +564,12 @@ Requirements:
             self.post.step_state["image"] = "completed"
             self.post.save()
             
+            # Return appropriate URL
+            if self._is_pollinations_model(image_model) and hasattr(result, 'image_url') and result.image_url:
+                # For Pollinations, use the persistent remote URL
+                return result.image_url
+            
+            # For others, return the data URL (base64)
             return image_data_url
             
         except (PollinationsError, Exception) as e:
@@ -608,8 +614,13 @@ def run_full_pipeline(
         if generate_image:
             try:
                 image_agent = ImageAgent(openrouter, post)
-                image_data_url = image_agent.run(post.title)
-                # Image upload happens in the task
+                image_url = image_agent.run(post.title)
+                
+                # Save image URL to post
+                if image_url:
+                    post.featured_image_url = image_url
+                    post.save()
+                    logger.info(f"Saved featured image for post {post.id}")
             except Exception as e:
                 logger.warning(f"Image generation failed for post {post.id}, continuing without image: {e}")
         
