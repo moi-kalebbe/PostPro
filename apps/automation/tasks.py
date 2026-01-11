@@ -320,23 +320,32 @@ def upload_image_to_supabase(post):
         return
 
     try:
-        logger.info(f"Downloading image from {post.featured_image_url}")
-        response = requests.get(post.featured_image_url, timeout=30)
-        
-        if response.status_code != 200:
-            logger.error(f"Failed to download image: {response.status_code}")
-            return
-            
-        image_content = response.content
+        image_content = None
+        ext = "jpg"
+
+        if post.featured_image_url.startswith("data:"):
+            # Handle Base64 Data URL (OpenRouter/Other)
+            logger.info("Processing base64 image data")
+            header, encoded = post.featured_image_url.split(",", 1)
+            image_content = base64.b64decode(encoded)
+            if "png" in header:
+                ext = "png"
+        else:
+            # Handle Remote URL (Pollinations)
+            logger.info(f"Downloading image from {post.featured_image_url}")
+            response = requests.get(post.featured_image_url, timeout=30)
+            if response.status_code != 200:
+                logger.error(f"Failed to download image: {response.status_code}")
+                return
+            image_content = response.content
+            if "png" in post.featured_image_url.lower():
+                ext = "png"
         
         # Initialize Supabase
         supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
         
         # Determine filename
-        ext = "jpg" # Default to jpg as per our Pollinations fix
-        if "png" in post.featured_image_url.lower():
-            ext = "png"
-            
+        # ext is already set above
         filename = f"post-images/{post.id}_{uuid.uuid4().hex[:8]}.{ext}"
         
         logger.info(f"Uploading to Supabase Storage: {filename}")
