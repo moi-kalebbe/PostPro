@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PostPro
  * Description: Conecta seu site WordPress ao PostPro para geração e publicação automática de conteúdo.
- * Version: 2.2.1
+ * Version: 2.3.0
  * Author: Moisés Kalebbe
  * License: GPLv2 or later
  */
@@ -29,7 +29,6 @@ class PostPro_Plugin {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         add_action('rest_api_init', array($this, 'register_rest_routes'));
         add_action('wp_ajax_postpro_test_connection', array($this, 'ajax_test_connection'));
-        add_action('wp_ajax_postpro_upload_csv', array($this, 'ajax_upload_csv'));
         add_action('wp_ajax_postpro_sync_profile', array($this, 'ajax_sync_profile'));
         add_action('wp_ajax_postpro_get_plan', array($this, 'ajax_get_plan'));
         add_action('wp_ajax_postpro_save_keywords', array($this, 'ajax_save_keywords'));
@@ -77,7 +76,7 @@ class PostPro_Plugin {
     public function render_settings_page() {
         ?>
         <div class="wrap postpro-wrapper">
-            <h1>Configurações PostPro (v2.2.0)</h1>
+            <h1>Configurações PostPro (v2.3.0)</h1>
             
             <!-- Connection Card -->
             <div class="card postpro-card">
@@ -212,8 +211,8 @@ class PostPro_Plugin {
             return;
         }
         
-        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.2.0');
-        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.2.0', true);
+        wp_enqueue_style('postpro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '2.3.0');
+        wp_enqueue_script('postpro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '2.3.0', true);
         
         wp_localize_script('postpro-admin-js', 'postproAdmin', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -291,6 +290,14 @@ class PostPro_Plugin {
             $this->upload_featured_image($post_id, $params['featured_image_url']);
         }
         
+        // ===== INÍCIO: INTEGRAÇÃO SEO =====
+        $seo_data = isset($params['seo_data']) ? $params['seo_data'] : array();
+        
+        if (!empty($seo_data)) {
+            $this->process_seo_metadata($post_id, $seo_data);
+        }
+        // ===== FIM: INTEGRAÇÃO SEO =====
+        
         return array(
             'success' => true,
             'post_id' => $post_id,
@@ -313,32 +320,152 @@ class PostPro_Plugin {
     }
     
     // =========================================================================
+    // SEO Metadata Processing
+    // =========================================================================
+    
+    /**
+     * Process SEO metadata for supported plugins
+     * 
+     * @param int $post_id WordPress post ID
+     * @param array $seo_data SEO data from API
+     */
+    private function process_seo_metadata($post_id, $seo_data) {
+        require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+        
+        $keyword = isset($seo_data['keyword']) ? sanitize_text_field($seo_data['keyword']) : '';
+        $title = isset($seo_data['seo_title']) ? sanitize_text_field($seo_data['seo_title']) : '';
+        $description = isset($seo_data['seo_description']) ? sanitize_text_field($seo_data['seo_description']) : '';
+        $faq = isset($seo_data['faq_schema']) ? $seo_data['faq_schema'] : null;
+        $faq_title = isset($seo_data['faq_title']) ? sanitize_text_field($seo_data['faq_title']) : 'FAQ - Perguntas Frequentes';
+        $article = isset($seo_data['article_schema']) ? $seo_data['article_schema'] : null;
+        $article_type = isset($seo_data['article_type']) ? sanitize_text_field($seo_data['article_type']) : 'BlogPosting';
+        $internal_link = isset($seo_data['internal_links']) ? sanitize_text_field($seo_data['internal_links']) : '';
+        
+        // Rank Math SEO
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            $this->update_rankmath_seo($post_id, $keyword, $title, $description, $faq, $article, $faq_title, $article_type);
+        }
+        
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            $this->update_yoast_seo($post_id, $keyword, $title, $description);
+        }
+        
+        // Internal Link Juicer
+        if (is_plugin_active('internal-links/wp-internal-linkjuicer.php') && !empty($internal_link)) {
+            $this->update_internal_link_juicer($post_id, $internal_link);
+        }
+    }
+    
+    /**
+     * Update Rank Math SEO metadata
+     */
+    private function update_rankmath_seo($post_id, $keyword, $title, $description, $faq_data, $article_data, $faq_title, $article_type) {
+        if (!empty($keyword)) {
+            update_post_meta($post_id, 'rank_math_focus_keyword', $keyword);
+        }
+        if (!empty($title)) {
+            update_post_meta($post_id, 'rank_math_title', $title);
+        }
+        if (!empty($description)) {
+            update_post_meta($post_id, 'rank_math_description', $description);
+        }
+        
+        // FAQ Schema
+        if (!empty($faq_data) && is_array($faq_data)) {
+            $schema = array(
+                'metadata' => array(
+                    'type' => 'template',
+                    'shortcode' => 's-' . wp_generate_uuid4(),
+                    'isPrimary' => '',
+                    'title' => 'FAQ Block',
+                    'reviewLocationShortcode' => '[rank_math_rich_snippet]'
+                ),
+                '@type' => 'FAQPage',
+                'name' => $faq_title,
+                'url' => '%url%',
+                'datePublished' => '%date(Y-m-dTH:i:sP)%',
+                'dateModified' => '%modified(Y-m-dTH:i:sP)%',
+                'mainEntity' => array()
+            );
+            
+            foreach ($faq_data as $faq_item) {
+                if (isset($faq_item['pergunta']) && isset($faq_item['resposta'])) {
+                    $schema['mainEntity'][] = array(
+                        '@type' => 'Question',
+                        'name' => sanitize_text_field($faq_item['pergunta']),
+                        'acceptedAnswer' => array(
+                            '@type' => 'Answer',
+                            'text' => sanitize_textarea_field($faq_item['resposta'])
+                        )
+                    );
+                }
+            }
+            
+            update_post_meta($post_id, 'rank_math_schema_FAQPage', $schema);
+        }
+        
+        // Article Schema
+        if (!empty($article_data) && is_array($article_data)) {
+            $meta_key = 'rank_math_schema_' . ($article_type === 'NewsArticle' ? 'NewsArticle' : 'BlogPosting');
+            $schema = array(
+                'metadata' => array(
+                    'type' => 'template',
+                    'shortcode' => 's-' . wp_generate_uuid4(),
+                    'isPrimary' => '1',
+                    'title' => 'Article',
+                    'enableSpeakable' => 'disable',
+                ),
+                '@type' => $article_type,
+                'articleSection' => '%primary_taxonomy_terms%',
+                'headline' => isset($article_data['headline']) ? sanitize_text_field($article_data['headline']) : '',
+                'description' => isset($article_data['description']) ? sanitize_textarea_field($article_data['description']) : '',
+                'keywords' => isset($article_data['keywords']) ? sanitize_text_field($article_data['keywords']) : '',
+                'author' => array(
+                    '@type' => 'Person',
+                    'name' => '%post_author%',
+                ),
+                'datePublished' => '%date(Y-m-dTH:i:sP)%',
+                'dateModified' => '%modified(Y-m-dTH:i:sP)%',
+                'image' => array(
+                    '@type' => 'ImageObject',
+                    'url' => '%post_thumbnail%',
+                ),
+            );
+            
+            update_post_meta($post_id, $meta_key, $schema);
+        }
+    }
+    
+    /**
+     * Update Yoast SEO metadata
+     */
+    private function update_yoast_seo($post_id, $keyword, $title, $description) {
+        if (!empty($keyword)) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', $keyword);
+        }
+        if (!empty($title)) {
+            update_post_meta($post_id, '_yoast_wpseo_title', $title);
+        }
+        if (!empty($description)) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $description);
+        }
+    }
+    
+    /**
+     * Update Internal Link Juicer metadata
+     */
+    private function update_internal_link_juicer($post_id, $link_keyword) {
+        $links_array = array($link_keyword);
+        update_post_meta($post_id, 'ilj_linkdefinition', $links_array);
+    }
+    
+    // =========================================================================
     // AJAX Handlers (Proxy to Backend)
     // =========================================================================
     
     public function ajax_test_connection() {
         $this->proxy_api_request('GET', '/validate-license');
-    }
-    
-    public function ajax_upload_csv() {
-        if (!isset($_FILES['csv_file'])) {
-            wp_send_json_error('No file uploaded');
-        }
-        
-        $file = $_FILES['csv_file'];
-        $body = array(
-            'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
-            'dry_run' => isset($_POST['dry_run']) && $_POST['dry_run'] == '1' ? 'true' : 'false'
-        );
-        
-        // For file uploads we need to use CURL directly or specialized wp_remote_post args
-        // Standard wp_remote_post doesn't handle multipart/form-data well with files easily
-        // So we will construct a manual request logic/helper for this one case if needed,
-        // BUT for simplicity in this MVP, let's try to send the file content as base64 or just raw string
-        // if the backend supports it. However, the backend likely expects multipart.
-        // Let's implement a specific multipart sender.
-        
-        $this->proxy_api_request_multipart('/project/upload-csv', $file, $body['dry_run']);
     }
     
     public function ajax_sync_profile() {
@@ -354,53 +481,6 @@ class PostPro_Plugin {
         }
         
         $this->proxy_api_request('POST', '/project/keywords', array('keywords' => $keywords));
-    }
-    
-    private function proxy_api_request_multipart($endpoint, $file_array, $dry_run) {
-        check_ajax_referer('postpro_nonce', 'nonce');
-        
-        $license_key = get_option('postpro_license_key', '');
-        $api_url = get_option('postpro_api_url', POSTPRO_API_BASE);
-        
-        $boundary = wp_generate_password(24);
-        $headers = array(
-            'X-License-Key' => $license_key,
-            'Content-Type' => 'multipart/form-data; boundary=' . $boundary
-        );
-        
-        $payload = '';
-        
-        // Add File
-        if ($file_array) {
-            $payload .= '--' . $boundary . "\r\n";
-            $payload .= 'Content-Disposition: form-data; name="file"; filename="' . $file_array['name'] . '"' . "\r\n";
-            $payload .= 'Content-Type: ' . $file_array['type'] . "\r\n\r\n";
-            $payload .= file_get_contents($file_array['tmp_name']) . "\r\n";
-        }
-        
-        // Add dry_run
-        $payload .= '--' . $boundary . "\r\n";
-        $payload .= 'Content-Disposition: form-data; name="dry_run"' . "\r\n\r\n";
-        $payload .= $dry_run . "\r\n";
-        
-        $payload .= '--' . $boundary . '--';
-        
-        $response = wp_remote_post($api_url . $endpoint, array(
-            'headers' => $headers,
-            'body' => $payload,
-            'timeout' => 60
-        ));
-        
-        if (is_wp_error($response)) {
-            wp_send_json_error('Upload Connection failed: ' . $response->get_error_message());
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        if ($response['response']['code'] >= 200 && $response['response']['code'] < 300) {
-            wp_send_json_success($body);
-        } else {
-            wp_send_json_error($body['error'] ?? 'Upload failed');
-        }
     }
     
     public function ajax_get_plan() {

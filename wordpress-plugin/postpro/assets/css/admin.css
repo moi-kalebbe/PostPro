@@ -99,51 +99,98 @@
     margin-top: 5px;
 }
 
-/* Editorial Plan Table */
+/* =====================================================
+   Tabela do Plano Editorial - LAYOUT CORRIGIDO
+   ===================================================== */
 #postpro-plan-content table {
     width: 100%;
     table-layout: fixed !important;
-    /* Enforce column widths */
     border-collapse: collapse;
+    min-width: 900px;
+    /* Garante largura mínima legível */
 }
 
 #postpro-plan-content th,
 #postpro-plan-content td {
-    padding: 10px;
+    padding: 12px 10px;
     vertical-align: top;
     text-align: left;
     white-space: normal !important;
-    /* Prevent collapsing */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
     display: table-cell !important;
-    /* Fix for responsive themes overriding it */
+    border: 1px solid #ddd;
 }
 
-/* Column Widths */
-#postpro-plan-content th:nth-child(1) {
-    width: 60px !important;
+/* Forçar exibição horizontal dos headers */
+#postpro-plan-content th {
+    font-weight: 600;
+    background-color: #f9f9f9;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
 }
 
-/* Day */
-#postpro-plan-content th:nth-child(2) {
-    width: auto !important;
+/* Larguras das Colunas - Proporções Fixas */
+#postpro-plan-content th:nth-child(1),
+#postpro-plan-content td:nth-child(1) {
+    width: 8% !important;
+    min-width: 70px;
 }
 
-/* Title - takes remaining space */
-#postpro-plan-content th:nth-child(3) {
-    width: 120px !important;
+#postpro-plan-content th:nth-child(2),
+#postpro-plan-content td:nth-child(2) {
+    width: 40% !important;
+    min-width: 250px;
 }
 
-/* Status */
-#postpro-plan-content th:nth-child(4) {
-    width: 120px !important;
+#postpro-plan-content th:nth-child(3),
+#postpro-plan-content td:nth-child(3) {
+    width: 15% !important;
+    min-width: 120px;
 }
 
-/* Date */
-#postpro-plan-content th:nth-child(5) {
-    width: 220px !important;
+#postpro-plan-content th:nth-child(4),
+#postpro-plan-content td:nth-child(4) {
+    width: 15% !important;
+    min-width: 120px;
 }
 
-/* Actions - wider for buttons */
+#postpro-plan-content th:nth-child(5),
+#postpro-plan-content td:nth-child(5) {
+    width: 22% !important;
+    min-width: 180px;
+}
+
+/* Wrapper para scroll horizontal em telas pequenas */
+#postpro-plan-content {
+    overflow-x: auto;
+}
+
+/* Responsivo: manter legibilidade em mobile */
+@media screen and (max-width: 782px) {
+    #postpro-plan-content table {
+        min-width: 100%;
+        table-layout: auto !important;
+    }
+
+    #postpro-plan-content th,
+    #postpro-plan-content td {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    #postpro-plan-content tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        display: block;
+    }
+
+    #postpro-plan-content th {
+        text-align: left;
+        padding: 10px;
+    }
+}
 
 /* Badges */
 .postpro-badge {
@@ -185,6 +232,26 @@
     background: #fbeaea;
     color: #b32d2e;
     border: 1px solid #ffb9b9;
+}
+
+/* Coluna de Título - Tratamento Especial */
+.column-title {
+    max-width: none !important;
+}
+
+.column-title .display-mode {
+    line-height: 1.5;
+}
+
+.column-title .display-mode strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #2271b1;
+}
+
+.column-title .display-mode small {
+    color: #646970;
+    font-size: 0.9em;
 }
 
 /* Edit Mode Inputs */
