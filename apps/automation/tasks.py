@@ -10,6 +10,8 @@ import pandas as pd
 from io import BytesIO
 from celery import shared_task
 from django.conf import settings
+import requests
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -301,22 +303,62 @@ def read_keywords_from_file(batch_job) -> list[str]:
 
 
 def upload_image_to_supabase(post):
-    """Upload featured image to Supabase Storage."""
+    """
+    Upload featured image to Supabase Storage.
+    Downloads from the current URL (e.g. Pollinations) and uploads to 'post-images' bucket.
+    Updates post.featured_image_url with the Supabase public URL.
+    """
     from supabase import create_client
     
-    # Get the image artifact
-    artifact = post.artifacts.filter(
-        step='image',
-        is_active=True
-    ).first()
-    
-    if not artifact:
+    if not post.featured_image_url:
+        logger.warning(f"No featured_image_url for post {post.id}, skipping upload")
         return
-    
-    # We don't store the full base64 in artifact, need to regenerate
-    # For now, skip - in production, store temp file or pass directly
-    # This is a placeholder for the actual implementation
-    logger.info(f"Image upload placeholder for post {post.id}")
+
+    # Idempotency check: if already a Supabase URL, skip
+    if settings.SUPABASE_URL in post.featured_image_url:
+        logger.info(f"Image already on Supabase for post {post.id}")
+        return
+
+    try:
+        logger.info(f"Downloading image from {post.featured_image_url}")
+        response = requests.get(post.featured_image_url, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to download image: {response.status_code}")
+            return
+            
+        image_content = response.content
+        
+        # Initialize Supabase
+        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+        
+        # Determine filename
+        ext = "jpg" # Default to jpg as per our Pollinations fix
+        if "png" in post.featured_image_url.lower():
+            ext = "png"
+            
+        filename = f"post-images/{post.id}_{uuid.uuid4().hex[:8]}.{ext}"
+        
+        logger.info(f"Uploading to Supabase Storage: {filename}")
+        
+        # Upload
+        res = supabase.storage.from_("post-images").upload(
+            file=image_content,
+            path=filename,
+            file_options={"content-type": f"image/{ext}", "upsert": "true"}
+        )
+        
+        # Get Public URL
+        public_url = supabase.storage.from_("post-images").get_public_url(filename)
+        
+        # Update Post
+        post.featured_image_url = public_url
+        post.save()
+        logger.info(f"Successfully uploaded image to Supabase: {public_url}")
+        
+    except Exception as e:
+        logger.error(f"Failed to upload image to Supabase for post {post.id}: {e}")
+        # We don't raise here to allow publishing without image if upload fails
 
 
 @shared_task(bind=True, max_retries=2)
@@ -414,6 +456,9 @@ def publish_to_wordpress(self, post_id: str):
     if post.status == Post.Status.PUBLISHED and post.wordpress_post_id:
         logger.info(f"Post {post_id} already published as WP#{post.wordpress_post_id}")
         return {"already_published": True, "post_id": post.wordpress_post_id}
+    
+    # Ensure image is on Supabase (Proxy Strategy)
+    upload_image_to_supabase(post)
     
     project = post.project
     
