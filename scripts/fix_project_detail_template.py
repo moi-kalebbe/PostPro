@@ -1,4 +1,7 @@
-{% extends 'base.html' %}
+
+import os
+
+content = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ project.name }} - PostPro{% endblock %}
@@ -663,3 +666,9 @@
     }
 </script>
 {% endblock %}
+"""
+
+with open('templates/projects/detail.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print(f"Successfully fixed template at templates/projects/detail.html")
