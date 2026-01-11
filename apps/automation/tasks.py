@@ -518,6 +518,7 @@ def publish_to_wordpress(self, post_id: str):
                 "meta_description": post.meta_description,
                 "featured_image_url": post.featured_image_url,
                 "postpro_post_id": str(post.id),
+                "seo_data": post.seo_data or {},
             },
             idempotency_key=idempotency_key,
         )
@@ -729,13 +730,35 @@ def generate_post_from_plan_item(self, item_id: str):
         )
         
         # Post is already populated by the pipeline
+        # Build FAQ schema from research questions
+        faq_schema = []
+        if post.research_data and post.research_data.get('questions'):
+            for i, question in enumerate(post.research_data['questions'][:5]):  # Limit to 5
+                # Try to find answer in content or use a default
+                faq_schema.append({
+                    'pergunta': question,
+                    'resposta': f"Veja a seção correspondente no artigo acima para uma resposta completa sobre: {question}"
+                })
+        
+        # Build Article schema
+        article_schema = {
+            'headline': post.title,
+            'description': post.meta_description,
+            'keywords': item.keyword_focus,
+        }
+        
         # Add SEO data from editorial plan item
         post.seo_data = {
             'keyword': item.keyword_focus,
             'seo_title': post.title,
             'seo_description': post.meta_description,
             'cluster': item.cluster,
-            'search_intent': item.search_intent
+            'search_intent': item.search_intent,
+            'faq_schema': faq_schema if faq_schema else None,
+            'faq_title': f'Perguntas Frequentes sobre {item.keyword_focus}',
+            'article_schema': article_schema,
+            'article_type': 'BlogPosting',
+            'internal_links': item.keyword_focus,
         }
         
         post.status = Post.Status.APPROVED
