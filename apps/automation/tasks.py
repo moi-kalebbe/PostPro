@@ -341,24 +341,41 @@ def upload_image_to_supabase(post):
             if "png" in post.featured_image_url.lower():
                 ext = "png"
         
-        # Initialize Supabase
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+        # Initialize Supabase (Using RAW HTTP to avoid client proxy errors)
+        # supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
         
         # Determine filename
         # ext is already set above
-        filename = f"post-images/{post.id}_{uuid.uuid4().hex[:8]}.{ext}"
+        filename = f"{post.id}_{uuid.uuid4().hex[:8]}.{ext}"
+        bucket = "post-images"
         
-        logger.info(f"Uploading to Supabase Storage: {filename}")
+        logger.info(f"Uploading to Supabase Storage (RAW HTTP): {bucket}/{filename}")
         
-        # Upload
-        res = supabase.storage.from_("post-images").upload(
-            file=image_content,
-            path=filename,
-            file_options={"content-type": f"image/{ext}", "upsert": "true"}
+        # Raw Upload URL
+        # e.g., https://xyz.supabase.co/storage/v1/object/post-images/folder/file.jpg
+        # But for root of bucket: /storage/v1/object/post-images/filename
+        upload_endpoint = f"{settings.SUPABASE_URL}/storage/v1/object/{bucket}/{filename}"
+        
+        headers = {
+            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": f"image/{ext}",
+            "x-upsert": "true"
+        }
+        
+        upload_response = requests.post(
+            upload_endpoint,
+            data=image_content,
+            headers=headers,
+            timeout=30
         )
         
-        # Get Public URL
-        public_url = supabase.storage.from_("post-images").get_public_url(filename)
+        if upload_response.status_code not in [200, 201]:
+            logger.error(f"Supabase Upload Failed: {upload_response.status_code} - {upload_response.text}")
+            return
+            
+        # Get Public URL (Manually constructed to allow for robust fallback)
+        # Standard: {URL}/storage/v1/object/public/{bucket}/{filename}
+        public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/{bucket}/{filename}"
         
         # Update Post
         post.featured_image_url = public_url
