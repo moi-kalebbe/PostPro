@@ -70,11 +70,13 @@ class Agency(models.Model):
     openrouter_api_key_encrypted = models.TextField(blank=True, null=True)
     default_text_model = models.CharField(
         max_length=100,
-        default='anthropic/claude-3.5-sonnet'
+        default='qwen/qwen3-32b',  # Melhor custo-benefício validado (ATUALIZADO 2026-01)
+        help_text='Modelo de texto padrão para novos projetos'
     )
     default_image_model = models.CharField(
         max_length=100,
-        default='pollinations/flux'
+        default='pollinations/flux',  # Gratuito via Pollinations.ai
+        help_text='Modelo de imagem padrão para novos projetos'
     )
     
     # Billing

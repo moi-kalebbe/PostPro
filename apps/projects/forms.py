@@ -12,35 +12,47 @@ from .models import Project, ProjectContentSettings
 
 TEXT_MODEL_CHOICES = [
     ('', '-- Usar padrão da agência --'),
-    # Econômicos (Plano Básico)
-    ('deepseek/deepseek-chat', 'DeepSeek Chat (Econômico)'),
-    ('meta-llama/llama-3.1-70b-instruct', 'Llama 3.1 70B'),
-    ('google/gemini-flash-1.5', 'Gemini Flash 1.5'),
-    # Intermediários
-    ('openai/gpt-4o-mini', 'GPT-4o Mini'),
-    ('anthropic/claude-3-haiku', 'Claude 3 Haiku'),
-    # Premium (Plano Avançado)
-    ('anthropic/claude-sonnet-4', 'Claude Sonnet 4 (Premium)'),
-    ('anthropic/claude-3.5-sonnet', 'Claude 3.5 Sonnet'),
-    ('openai/gpt-4o', 'GPT-4o'),
-    ('google/gemini-pro-1.5', 'Gemini Pro 1.5'),
+    
+    # 💚 ECONÔMICOS - Melhor Custo-Benefício ($0.03-0.30/M tokens)
+    ('qwen/qwen3-32b', '💚 Qwen3 32B - $0.08/$0.24 (RECOMENDADO)'),
+    ('deepseek/deepseek-v3', '💚 DeepSeek V3 - $0.30/$1.20 (13.1B tokens)'),
+    ('mistralai/mistral-small-3', '💚 Mistral Small 3 - $0.03/$0.11 (SEO)'),
+    ('meta-llama/llama-4-scout', '💚 Llama 4 Scout 17B - $0.08/$0.30'),
+    
+    # 🟡 INTERMEDIÁRIOS - Equilíbrio Custo/Performance ($0.25-3.00/M tokens)
+    ('anthropic/claude-3-haiku', '🟡 Claude 3 Haiku - $0.25/$1.25'),
+    ('openai/gpt-4o', '🟡 GPT-4o - $2.50/$10 (10.5B tokens)'),
+    ('qwen/qwen3-coder-480b-a35b', '🟡 Qwen3 Coder 480B - $0.22/$0.95'),
+    
+    # 💎 PREMIUM - Máxima Qualidade ($3.00-15.00/M tokens)
+    ('anthropic/claude-3.7-sonnet-thinking', '💎 Claude 3.7 Sonnet Thinking - $3/$15'),
+    ('openai/gpt-5-chat', '💎 GPT-5 Chat - $1.25/$10'),
+    ('openai/gpt-5.2-pro', '💎 GPT-5.2 Pro - Agentic Coding'),
+    ('mistralai/mistral-large-3-2512', '💎 Mistral Large 3 - $0.50/$1.50'),
+    ('mistralai/codestral-2508', '💎 Codestral 2508 - $0.30/$0.90 (256K ctx)'),
 ]
 
 IMAGE_MODEL_CHOICES = [
     ('', '-- Usar padrão da agência --'),
-    # Pollinations (gratuito/barato)
-    ('pollinations/turbo', 'Turbo - Rápido (Pollinations)'),
-    ('pollinations/flux', 'Flux - Alta qualidade (Pollinations)'),
-    ('pollinations/flux-realism', 'Flux Realism - Fotorealista'),
-    ('pollinations/gptimage', 'GPTImage (Pollinations)'),
-    ('pollinations/gptimage-large', 'GPTImage Large - Premium'),
-    # OpenAI (via OpenRouter)
-    ('openai/dall-e-3', 'DALL-E 3 (OpenAI - Premium)'),
+    
+    # 💚 GRATUITO/ECONÔMICO - Pollinations (sem custo de API)
+    ('pollinations/flux', '💚 Pollinations Flux - Alta qualidade (RECOMENDADO)'),
+    ('pollinations/turbo', '💚 Pollinations Turbo - Rápido'),
+    ('pollinations/flux-realism', '💚 Pollinations Flux Realism - Fotorealista'),
+    ('pollinations/gptimage', '💚 Pollinations GPTImage'),
+    ('pollinations/gptimage-large', '💚 Pollinations GPTImage Large'),
+    
+    # 🟡 INTERMEDIÁRIOS - Modelos Multimodais ($0.049-0.90/M tokens)
+    ('meta-llama/llama-3.2-11b-vision-instruct', '🟡 Llama 3.2 11B Vision - $0.049'),
+    ('z-ai/glm-4.6v', '🟡 GLM 4.6V - $0.30/$0.90 (128K ctx)'),
+    
+    # 💎 PREMIUM - Geração Dedicada ($2.50-30/M tokens)
+    ('google/gemini-2.5-flash-image', '💎 Gemini 2.5 Flash Image - $30/M (Nano Banana)'),
 ]
 
 RESEARCH_MODEL_CHOICES = [
-    ('perplexity/sonar', 'Perplexity Sonar (Padrão - Rápido)'),
-    ('perplexity/sonar-pro-search', 'Perplexity Sonar Pro (Avançado)'),
+    ('perplexity/sonar', '💚 Perplexity Sonar - Rápido (RECOMENDADO)'),
+    ('perplexity/sonar-pro-search', '💎 Perplexity Sonar Pro - Avançado'),
 ]
 
 class ProjectForm(forms.ModelForm):
@@ -189,6 +201,37 @@ class ProjectForm(forms.ModelForm):
     def clean_wordpress_url(self):
         url = self.cleaned_data.get('wordpress_url', '')
         return url.rstrip('/')
+
+    def clean_text_model(self):
+        """Valida se o modelo de texto existe no OpenRouter."""
+        model_id = self.cleaned_data.get('text_model')
+        
+        # Ignorar validação se for o padrão da agência (string vazia)
+        if not model_id:
+            return model_id
+            
+        if self.instance.agency:
+            # Importação local para evitar ciclo
+            from services.openrouter_models import OpenRouterModelsService
+            from django.core.exceptions import ValidationError
+            
+            api_key = self.instance.agency.get_openrouter_key()
+            if api_key:
+                try:
+                    service = OpenRouterModelsService(api_key)
+                    # Verifica se modelo existe
+                    if not service.validate_model_exists(model_id):
+                        # Tenta refresh forçado caso seja um modelo novo
+                        if not service.validate_model_exists(model_id, force_refresh=True):
+                            raise ValidationError(
+                                f"O modelo '{model_id}' não foi encontrado no OpenRouter. Verifique se ele ainda está disponível."
+                            )
+                except Exception as e:
+                    # Logar erro mas permitir salvar (fail-open) para não bloquear usuário se API cair
+                    print(f"Erro validando modelo OpenRouter: {e}")
+                    pass
+                    
+        return model_id
 
     def save(self, commit=True):
         project = super().save(commit=False)

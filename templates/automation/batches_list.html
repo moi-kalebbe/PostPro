@@ -136,7 +136,7 @@
 
 {% block extra_js %}
 <script>
-    // ========== DELETE FUNCTIONALITY ==========
+    // = ==  ==  ==  == = DELETE FUNCTIONALITY = ==  ==  ==  == =
 
     let deleteBatchId = null;
 
@@ -176,7 +176,7 @@
         deleteBatchId = null;
     }
 
-    // ========== BULK SELECTION ==========
+    // = ==  ==  ==  == = BULK SELECTION = ==  ==  ==  == =
 
     function toggleSelectAll(checkbox) {
         const checkboxes = document.querySelectorAll('.batch-checkbox');
@@ -212,7 +212,7 @@
 
     async function bulkDeleteBatches() {
         const batchIds = getSelectedBatchIds();
-        if (batchIds.length === 0) {
+        if (batchIds.length = ==  0) {
             showToast('Nenhum job selecionado', 'warning');
             return;
         }

@@ -207,7 +207,7 @@
             document.querySelectorAll('.wizard-step').forEach((el, i) => {
                 el.classList.remove('active', 'completed');
                 if (i + 1 < step) el.classList.add('completed');
-                if (i + 1 === step) el.classList.add('active');
+                if (i + 1 = ==  step) el.classList.add('active');
             });
         }
 
@@ -257,14 +257,14 @@
                 const data = await response.json();
 
                 document.getElementById('progress-text').textContent =
-                    data.status === 'processing' ? 'Processando...' :
-                        data.status === 'completed' ? 'Concluído!' : data.status;
+                    data.status = ==  'processing' ? 'Processando...' :
+                        data.status = ==  'completed' ? 'Concluído!' : data.status;
 
                 document.getElementById('progress-bar').style.width = `${data.progress_percent}%`;
                 document.getElementById('progress-detail').textContent =
                     `${data.processed_rows} / ${data.total_rows} keywords`;
 
-                if (data.status === 'completed') {
+                if (data.status = ==  'completed') {
                     showStep(4);
 
                     if (data.is_dry_run && data.error_log?.simulation_report) {
@@ -276,7 +276,7 @@
                         document.getElementById('sim-tokens').textContent = formatNumber(sim.total_tokens);
                         document.getElementById('sim-cost').textContent = '$' + parseFloat(sim.total_cost).toFixed(4);
                     }
-                } else if (data.status === 'failed') {
+                } else if (data.status = ==  'failed') {
                     showStep(4);
                     document.getElementById('complete-title').textContent = 'Erro no Processamento';
                     document.getElementById('complete-message').textContent = data.error || 'Erro desconhecido';

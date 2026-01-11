@@ -511,7 +511,7 @@
         const allCheckboxes = document.querySelectorAll('.item-checkbox');
         const selectAll = document.getElementById('select-all');
         if (allCheckboxes.length > 0) {
-            selectAll.checked = checkboxes.length === allCheckboxes.length;
+            selectAll.checked = checkboxes.length = ==  allCheckboxes.length;
             selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
         }
     }
@@ -575,7 +575,7 @@
     }
 
     function bulkDeleteItems() {
-        if (selectedItems.size === 0) return;
+        if (selectedItems.size = ==  0) return;
 
         openDeleteModal(
             `Tem certeza que deseja excluir ${selectedItems.size} item(ns) selecionado(s)?`,
@@ -648,7 +648,7 @@
         toast.className = `toast toast-${type}`;
         toast.textContent = message;
         toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; z-index: 9999; animation: slideIn 0.3s ease;';
-        toast.style.background = type === 'success' ? 'var(--success)' : 'var(--error)';
+        toast.style.background = type = ==  'success' ? 'var(--success)' : 'var(--error)';
         toast.style.color = 'white';
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);

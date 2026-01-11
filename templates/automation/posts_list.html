@@ -253,14 +253,14 @@
         }
     }
 
-    // ========== DELETE FUNCTIONALITY ==========
+    // = ==  ==  ==  == = DELETE FUNCTIONALITY = ==  ==  ==  == =
 
     let deletePostId = null;
     let deleteHasWordPress = false;
 
     function openDeleteModal(postId, keyword, wpPostId) {
         deletePostId = postId;
-        deleteHasWordPress = wpPostId !== null && wpPostId !== 'null';
+        deleteHasWordPress = wpPostId ! ==  null && wpPostId ! ==  'null';
 
         document.getElementById('delete-post-keyword').textContent = keyword;
 
@@ -312,7 +312,7 @@
         deletePostId = null;
     }
 
-    // ========== BULK SELECTION ==========
+    // = ==  ==  ==  == = BULK SELECTION = ==  ==  ==  == =
 
     function toggleSelectAll(checkbox) {
         const checkboxes = document.querySelectorAll('.post-checkbox');
@@ -348,7 +348,7 @@
 
     async function bulkDeletePosts() {
         const postIds = getSelectedPostIds();
-        if (postIds.length === 0) {
+        if (postIds.length = ==  0) {
             showToast('Nenhum post selecionado', 'warning');
             return;
         }
