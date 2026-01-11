@@ -15,7 +15,7 @@ TEXT_MODEL_CHOICES = [
     
     # 💚 ECONÔMICOS - Melhor Custo-Benefício ($0.03-0.30/M tokens)
     ('qwen/qwen3-32b', '💚 Qwen3 32B - $0.08/$0.24 (RECOMENDADO)'),
-    ('deepseek/deepseek-v3', '💚 DeepSeek V3 - $0.30/$1.20 (13.1B tokens)'),
+    ('deepseek/deepseek-chat', '💚 DeepSeek V3 - $0.30/$1.20 (Recomendado)'),
     ('mistralai/mistral-small-3', '💚 Mistral Small 3 - $0.03/$0.11 (SEO)'),
     ('meta-llama/llama-4-scout', '💚 Llama 4 Scout 17B - $0.08/$0.30'),
     
