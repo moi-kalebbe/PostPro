@@ -314,9 +314,38 @@ class OpenRouterService:
                     
                     image_data = images[0]
                     
-                    # Validate it's a data URL
-                    if not image_data.startswith("data:image/"):
-                        raise OpenRouterError("Invalid image data URL")
+                    # Handle dict response (some models like Gemini return dict)
+                    if isinstance(image_data, dict):
+                        if "url" in image_data:
+                            image_data = image_data["url"]
+                        elif "b64_json" in image_data:
+                            image_data = f"data:image/png;base64,{image_data['b64_json']}"
+                        elif "base64" in image_data:
+                            image_data = f"data:image/png;base64,{image_data['base64']}"
+                        else:
+                            # Try to dump it as string if we can't find specific keys, 
+                            # or just pick the first value if it looks like a string
+                            logger.warning(f"Unknown image dict structure: {image_data.keys()}")
+                            # Ultimate fallback: check if any value looks like a url
+                            for val in image_data.values():
+                                if isinstance(val, str) and (val.startswith("http") or val.startswith("data:")):
+                                    image_data = val
+                                    break
+                    
+                    # Store as URL if it's a remote URL
+                    image_url = None
+                    if isinstance(image_data, str) and image_data.startswith("http"):
+                        image_url = image_data
+                        # For compatibility, we might want to download it, but for now let's modify result to support url
+                    
+                    # Validate it's a data URL OR a remote URL
+                    if not isinstance(image_data, str):
+                        raise OpenRouterError(f"Invalid image data type: {type(image_data)}")
+                        
+                    if not (image_data.startswith("data:image/") or image_data.startswith("http")):
+                        raise OpenRouterError(f"Invalid image data format (start): {image_data[:30]}...")
+                    
+                    # If it is a URL, we assign it to image_data_url as well since it's a 'url' to the image data
                     
                     return OpenRouterImageResult(
                         image_data_url=image_data,
