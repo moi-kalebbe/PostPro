@@ -322,7 +322,7 @@ TEMPLATE_CONTENT = r'''{% extends 'base.html' %}
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
     let deletePostId = null;
     let deleteWpId = null;
