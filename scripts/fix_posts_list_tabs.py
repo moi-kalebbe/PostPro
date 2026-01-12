@@ -1,4 +1,22 @@
-{% extends 'base.html' %}
+#!/usr/bin/env python
+"""
+Script to rewrite posts_list.html with unified Posts + RSS tabs.
+Following django-templates.md workflow to ensure correct syntax.
+
+Key rules:
+- All Django tags on single lines
+- Spaces around == operators
+- Use Design System classes
+"""
+
+import os
+
+TEMPLATE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    'templates', 'automation', 'posts_list.html'
+)
+
+TEMPLATE_CONTENT = r'''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Posts - PostPro{% endblock %}
@@ -422,3 +440,12 @@
     });
 </script>
 {% endblock %}
+'''
+
+def main():
+    with open(TEMPLATE_PATH, 'w', encoding='utf-8') as f:
+        f.write(TEMPLATE_CONTENT)
+    print(f'OK - Template rewritten: {TEMPLATE_PATH}')
+
+if __name__ == '__main__':
+    main()

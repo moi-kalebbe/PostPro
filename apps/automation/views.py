@@ -21,52 +21,107 @@ from .tasks import process_csv_batch, regenerate_post_step, publish_to_wordpress
 @login_required
 @agency_required
 def posts_list_view(request):
-    """List all posts for the agency."""
+    """List all posts for the agency, with optional RSS tab."""
+    from apps.projects.models import RSSFeed, ProjectRSSSettings
+    from .models import RSSItem
+    from django.db.models import Sum
+    
     agency = request.user.agency
     
-    # Filters
-    project_id = request.GET.get('project', '')
-    status_filter = request.GET.get('status', '')
-    search = request.GET.get('search', '')
+    # Tab handling (posts, rss, stats)
+    active_tab = request.GET.get('tab', 'posts')
     
-    posts = Post.objects.filter(
-        project__agency=agency
-    ).select_related('project', 'batch_job')
+    # Common context
+    context = {
+        'active_tab': active_tab,
+    }
     
-    if project_id:
-        posts = posts.filter(project_id=project_id)
-    if status_filter:
-        posts = posts.filter(status=status_filter)
-    if search:
-        posts = posts.filter(
-            Q(keyword__icontains=search) | Q(title__icontains=search)
-        )
-    
-    posts = posts.order_by('-created_at')
-    
-    # Pagination
-    paginator = Paginator(posts, 20)
-    page = request.GET.get('page', 1)
-    posts_page = paginator.get_page(page)
-    
-    # Projects for filter dropdown
-    projects_qs = Project.objects.filter(agency=agency)
-    projects_list = []
-    for p in projects_qs:
-        projects_list.append({
-            'id': str(p.id),
-            'name': p.name,
-            'is_selected': str(p.id) == project_id
+    # Tab: Posts (default)
+    if active_tab == 'posts':
+        # Filters
+        project_id = request.GET.get('project', '')
+        status_filter = request.GET.get('status', '')
+        search = request.GET.get('search', '')
+        
+        posts = Post.objects.filter(
+            project__agency=agency
+        ).select_related('project', 'batch_job')
+        
+        if project_id:
+            posts = posts.filter(project_id=project_id)
+        if status_filter:
+            posts = posts.filter(status=status_filter)
+        if search:
+            posts = posts.filter(
+                Q(keyword__icontains=search) | Q(title__icontains=search)
+            )
+        
+        posts = posts.order_by('-created_at')
+        
+        # Pagination
+        paginator = Paginator(posts, 20)
+        page = request.GET.get('page', 1)
+        posts_page = paginator.get_page(page)
+        
+        # Projects for filter dropdown
+        projects_qs = Project.objects.filter(agency=agency)
+        projects_list = []
+        for p in projects_qs:
+            projects_list.append({
+                'id': str(p.id),
+                'name': p.name,
+                'is_selected': str(p.id) == project_id
+            })
+        
+        context.update({
+            'posts': posts_page,
+            'projects': projects_list,
+            'status_choices': Post.Status.choices,
+            'project_filter': project_id,
+            'status_filter': status_filter,
+            'search': search,
         })
     
-    context = {
-        'posts': posts_page,
-        'projects': projects_list,
-        'status_choices': Post.Status.choices,
-        'project_filter': project_id,
-        'status_filter': status_filter,
-        'search': search,
-    }
+    # Tab: RSS (queue and recent items)
+    elif active_tab == 'rss':
+        # Stats
+        total_feeds = RSSFeed.objects.filter(project__agency=agency).count()
+        active_feeds = RSSFeed.objects.filter(project__agency=agency, is_active=True).count()
+        
+        processed_today = ProjectRSSSettings.objects.filter(
+            project__agency=agency
+        ).aggregate(total=Sum('items_processed_today'))['total'] or 0
+        
+        # Recent Items Stream
+        recent_items = RSSItem.objects.filter(
+            project__agency=agency
+        ).select_related('project', 'post').order_by('-created_at')[:50]
+        
+        # Feeds Status
+        feeds = RSSFeed.objects.filter(
+            project__agency=agency
+        ).select_related('project').order_by('-last_checked_at')
+        
+        context.update({
+            'total_feeds': total_feeds,
+            'active_feeds': active_feeds,
+            'processed_today': processed_today,
+            'recent_items': recent_items,
+            'feeds': feeds,
+        })
+    
+    # Tab: Stats (summary metrics)
+    elif active_tab == 'stats':
+        # Quick stats for both
+        total_posts = Post.objects.filter(project__agency=agency).count()
+        published_posts = Post.objects.filter(project__agency=agency, status='published').count()
+        total_feeds = RSSFeed.objects.filter(project__agency=agency).count()
+        
+        context.update({
+            'total_posts': total_posts,
+            'published_posts': published_posts,
+            'total_feeds': total_feeds,
+        })
     
     return render(request, 'automation/posts_list.html', context)
 
@@ -583,47 +638,3 @@ def costs_dashboard_view(request):
     
     return render(request, 'automation/costs_dashboard.html', context)
 
-
-@login_required
-@agency_required
-def rss_dashboard_view(request):
-    """
-    Dashboard global para RSS Feeds.
-    Visualização de feeds ativos, itens processados e status.
-    """
-    from apps.projects.models import RSSFeed, ProjectRSSSettings
-    from .models import RSSItem
-    from django.db.models import Count, Sum, Q
-    from django.utils import timezone
-    
-    agency = request.user.agency
-    
-    # 1. Stats
-    total_feeds = RSSFeed.objects.filter(project__agency=agency).count()
-    active_feeds = RSSFeed.objects.filter(project__agency=agency, is_active=True).count()
-    
-    # Items processed today (global across all projects)
-    processed_today = ProjectRSSSettings.objects.filter(
-        project__agency=agency
-    ).aggregate(total=Sum('items_processed_today'))['total'] or 0
-    
-    # 2. Recent Items Stream (Global)
-    recent_items = RSSItem.objects.filter(
-        project__agency=agency
-    ).select_related('project').order_by('-created_at')[:50]
-    
-    # 3. Feeds Status List
-    feeds = RSSFeed.objects.filter(
-        project__agency=agency
-    ).select_related('project').order_by('-last_checked_at')
-    
-    context = {
-        'total_feeds': total_feeds,
-        'active_feeds': active_feeds,
-        'processed_today': processed_today,
-        'recent_items': recent_items,
-        'feeds': feeds,
-        'active_tab': 'rss',
-    }
-    
-    return render(request, 'automation/rss_dashboard.html', context)
