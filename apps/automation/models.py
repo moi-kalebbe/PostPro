@@ -100,6 +100,10 @@ class Post(models.Model):
         PUBLISHED = 'published', 'Published'
         FAILED = 'failed', 'Failed'
     
+    class ArticleType(models.TextChoices):
+        BLOG = 'blog', 'Blog Post'
+        NEWS = 'news', 'News Article'
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     batch_job = models.ForeignKey(
         BatchJob,
@@ -152,6 +156,26 @@ class Post(models.Model):
     # NEW: Scheduled publishing
     post_status = models.CharField(max_length=20, default='draft')  # draft/future/publish
     scheduled_at = models.DateTimeField(null=True, blank=True)
+    
+    # NEW: Article type for SEO schema
+    article_type = models.CharField(
+        max_length=10,
+        choices=ArticleType.choices,
+        default=ArticleType.BLOG,
+        help_text='Tipo de artigo: Blog Post ou News Article'
+    )
+    
+    # NEW: Source attribution for RSS/News posts
+    source_url = models.URLField(
+        max_length=1000,
+        blank=True,
+        help_text='URL da notícia original (para posts RSS)'
+    )
+    source_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Nome do portal de origem'
+    )
     
     # WordPress integration
     wordpress_post_id = models.PositiveIntegerField(null=True, blank=True)
@@ -667,3 +691,111 @@ class AIModelPolicy(models.Model):
     
     def __str__(self):
         return f"Policy for {self.agency.name} ({self.preset_category or 'custom'})"
+
+
+class RSSItem(models.Model):
+    """
+    RSS feed item tracking for deduplication and processing.
+    Each item represents a news article from an external RSS feed.
+    """
+    
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        COMPLETED = 'completed', 'Completed'
+        SKIPPED = 'skipped', 'Skipped'
+        FAILED = 'failed', 'Failed'
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='rss_items'
+    )
+    
+    # Source data (from RSS feed)
+    source_url = models.URLField(
+        max_length=1000,
+        db_index=True,
+        help_text='URL original da notícia'
+    )
+    source_title = models.CharField(max_length=500)
+    source_description = models.TextField(blank=True)
+    source_image_url = models.URLField(max_length=1000, blank=True)
+    source_published_at = models.DateTimeField(null=True, blank=True)
+    source_author = models.CharField(max_length=255, blank=True)
+    source_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text='SHA256 hash for deduplication'
+    )
+    
+    # Processing status
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+    error_message = models.TextField(blank=True)
+    
+    # Generated post link
+    post = models.ForeignKey(
+        Post,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='rss_source_items'
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'rss_items'
+        verbose_name = 'RSS Item'
+        verbose_name_plural = 'RSS Items'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', 'source_hash']),
+            models.Index(fields=['project', 'status']),
+        ]
+        # Unique constraint: same URL per project
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'source_url'],
+                name='unique_rss_item_per_project'
+            )
+        ]
+    
+    def __str__(self):
+        return f"{self.source_title[:50]} ({self.status})"
+    
+    def mark_processing(self):
+        """Mark item as being processed."""
+        self.status = self.Status.PROCESSING
+        self.save(update_fields=['status'])
+    
+    def mark_completed(self, post: Post):
+        """Mark item as completed with generated post."""
+        from django.utils import timezone
+        self.status = self.Status.COMPLETED
+        self.post = post
+        self.processed_at = timezone.now()
+        self.save(update_fields=['status', 'post', 'processed_at'])
+    
+    def mark_failed(self, error: str):
+        """Mark item as failed with error message."""
+        from django.utils import timezone
+        self.status = self.Status.FAILED
+        self.error_message = error
+        self.processed_at = timezone.now()
+        self.save(update_fields=['status', 'error_message', 'processed_at'])
+    
+    def mark_skipped(self, reason: str = ""):
+        """Mark item as skipped (e.g., filtered out)."""
+        from django.utils import timezone
+        self.status = self.Status.SKIPPED
+        self.error_message = reason
+        self.processed_at = timezone.now()
+        self.save(update_fields=['status', 'error_message', 'processed_at'])

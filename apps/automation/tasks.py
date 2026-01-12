@@ -816,3 +816,205 @@ def sync_site_profile(self, project_id: str):
     except Exception as e:
         logger.error(f"Error syncing site profile for project {project_id}: {e}")
         raise
+
+
+# ============================================================================
+# RSS Feed Tasks
+# ============================================================================
+
+@shared_task(bind=True)
+def check_rss_feeds_task(self):
+    """
+    Periodic task to check all active RSS feeds for new items.
+    Should be registered in Celery Beat to run every 15-30 minutes.
+    """
+    from apps.projects.models import Project, ProjectRSSSettings, RSSFeed
+    from services.rss import create_rss_items_from_feed, RSSService
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    logger.info("Starting RSS feeds check task")
+    
+    # Get all active RSS feeds
+    active_feeds = RSSFeed.objects.filter(
+        is_active=True,
+    ).select_related('project', 'project__rss_settings')
+    
+    logger.info(f"Found {active_feeds.count()} active RSS feeds")
+    
+    rss_service = RSSService()
+    total_items_created = 0
+    
+    for feed in active_feeds:
+        try:
+            project = feed.project
+            # Handle potential missing settings
+            try:
+                settings = project.rss_settings
+            except ProjectRSSSettings.DoesNotExist:
+                continue
+
+            if not settings.is_active:
+                continue
+                
+            # Check if enough time has passed since last check (per feed)
+            if feed.last_checked_at:
+                next_check = feed.last_checked_at + timedelta(minutes=settings.check_interval_minutes)
+                if timezone.now() < next_check:
+                    # logger.debug(f"Skipping feed {feed}: not yet time")
+                    continue
+            
+            # Check daily limit (per project)
+            if not settings.can_process_more_today():
+                logger.info(f"Skipping feed {feed}: project daily limit reached")
+                continue
+            
+            # Fetch and create new RSS items
+            items_created = create_rss_items_from_feed(project, rss_service, feed_url=feed.feed_url)
+            total_items_created += items_created
+            
+            # Update feed timestamp regardless of items found
+            feed.last_checked_at = timezone.now()
+            feed.save(update_fields=['last_checked_at'])
+            
+            # Queue processing for new items
+            if items_created > 0:
+                process_pending_rss_items.delay(str(project.id))
+            
+        except Exception as e:
+            logger.error(f"Error checking RSS feed {feed}: {e}")
+            continue
+    
+    logger.info(f"RSS check completed: {total_items_created} new items created")
+    return total_items_created
+
+
+@shared_task(bind=True, max_retries=3)
+def process_pending_rss_items(self, project_id: str):
+    """
+    Process all pending RSS items for a project.
+    
+    Args:
+        project_id: UUID of the Project
+    """
+    from apps.projects.models import Project
+    from apps.automation.models import RSSItem
+    
+    logger.info(f"Processing pending RSS items for project {project_id}")
+    
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        logger.error(f"Project {project_id} not found")
+        return
+    
+    # Get pending items
+    pending_items = RSSItem.objects.filter(
+        project=project,
+        status=RSSItem.Status.PENDING
+    ).order_by('created_at')[:10]  # Process max 10 at a time
+    
+    logger.info(f"Found {pending_items.count()} pending items")
+    
+    for item in pending_items:
+        # Check daily limit before each item
+        try:
+            settings = project.rss_settings
+            if not settings.can_process_more_today():
+                logger.info(f"Daily limit reached for {project.name}, stopping")
+                break
+        except Exception:
+            pass
+        
+        # Queue individual item processing
+        process_rss_item_task.delay(str(item.id))
+
+
+@shared_task(bind=True, max_retries=2)
+def process_rss_item_task(self, rss_item_id: str):
+    """
+    Process a single RSS item: rewrite and publish as news post.
+    
+    Args:
+        rss_item_id: UUID of the RSSItem
+    """
+    from apps.automation.models import RSSItem, Post
+    from apps.ai_engine.agents import run_news_pipeline
+    from services.openrouter import OpenRouterService
+    from django.conf import settings
+    
+    logger.info(f"Processing RSS item {rss_item_id}")
+    
+    try:
+        rss_item = RSSItem.objects.select_related(
+            'project', 'project__agency'
+        ).get(id=rss_item_id)
+    except RSSItem.DoesNotExist:
+        logger.error(f"RSSItem {rss_item_id} not found")
+        return
+    
+    # Skip if already processed
+    if rss_item.status != RSSItem.Status.PENDING:
+        logger.info(f"RSSItem {rss_item_id} already processed (status: {rss_item.status})")
+        return
+    
+    project = rss_item.project
+    agency = project.agency
+    
+    # Get API key
+    api_key = agency.get_openrouter_key()
+    if not api_key:
+        rss_item.mark_failed("No OpenRouter API key configured")
+        return
+    
+    try:
+        # Get RSS settings
+        rss_settings = project.rss_settings
+    except Exception:
+        rss_item.mark_failed("No RSS settings configured")
+        return
+    
+    try:
+        # Create Post instance
+        post = Post.objects.create(
+            project=project,
+            keyword=rss_item.source_title[:500],
+            article_type=Post.ArticleType.NEWS,
+            source_url=rss_item.source_url,
+            source_name=rss_item.source_author or project.name,
+            status=Post.Status.GENERATING,
+        )
+        
+        # Initialize OpenRouter
+        openrouter = OpenRouterService(
+            api_key=api_key,
+            site_url=settings.SITE_URL,
+            site_name="PostPro"
+        )
+        
+        # Run news pipeline
+        run_news_pipeline(
+            post=post,
+            openrouter=openrouter,
+            rss_item=rss_item,
+            generate_image=True,
+            download_source_image=rss_settings.download_images,
+        )
+        
+        # Increment daily counter
+        rss_settings.increment_daily_counter()
+        
+        # Auto-publish if enabled
+        if rss_settings.auto_publish:
+            publish_to_wordpress.delay(str(post.id))
+        
+        # Update agency counter
+        agency.current_month_posts += 1
+        agency.save(update_fields=['current_month_posts'])
+        
+        logger.info(f"Successfully processed RSS item {rss_item_id} -> Post {post.id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to process RSS item {rss_item_id}: {e}")
+        rss_item.mark_failed(str(e))
+        raise

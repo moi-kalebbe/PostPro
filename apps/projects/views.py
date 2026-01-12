@@ -9,7 +9,7 @@ from django.db.models import Sum, Count
 
 from apps.accounts.decorators import agency_required, project_access_required
 from apps.automation.models import Post, BatchJob
-from .models import Project
+from .models import Project, RSSFeed
 from .forms import ProjectForm
 
 
@@ -99,7 +99,7 @@ def project_detail_view(request, project_id):
     )
     
     # Editorial Plan (latest active or pending)
-    from apps.automation.models import EditorialPlan
+    from apps.automation.models import EditorialPlan, RSSItem
     editorial_plan = EditorialPlan.objects.filter(
         project=project,
         status__in=[EditorialPlan.Status.GENERATING, EditorialPlan.Status.ACTIVE, EditorialPlan.Status.PENDING_APPROVAL, EditorialPlan.Status.APPROVED]
@@ -109,15 +109,34 @@ def project_detail_view(request, project_id):
     if editorial_plan:
         editorial_items = editorial_plan.items.all().order_by('day_index')[:30]
     
+    # RSS Settings
+    from .models import ProjectRSSSettings
+    try:
+        rss_settings = project.rss_settings
+    except ProjectRSSSettings.DoesNotExist:
+        rss_settings = None
+    
+    # RSS Items (pending and recent)
+    rss_items = RSSItem.objects.filter(
+        project=project
+    ).order_by('-created_at')[:20]
+    
+    # RSS Feeds
+    feeds = project.rss_feeds.all()
+    
     context = {
         'project': project,
         'recent_posts': recent_posts,
         'stats': stats,
         'editorial_plan': editorial_plan,
         'editorial_items': editorial_items,
+        'rss_settings': rss_settings,
+        'rss_items': rss_items,
+        'feeds': feeds,
     }
     
     return render(request, 'projects/detail.html', context)
+
 
 
 @login_required
@@ -351,3 +370,82 @@ def editorial_items_bulk_delete_view(request, project_id):
         'wp_deleted_count': wp_deleted_count,
     })
 
+
+@login_required
+@project_access_required
+def rss_settings_view(request, project_id):
+    """Save RSS feed general settings for a project."""
+    from .models import ProjectRSSSettings
+    
+    project = request.project
+    
+    if request.method != 'POST':
+        return redirect('projects:detail', project_id=project.id)
+    
+    # Get or create RSS settings
+    rss_settings, created = ProjectRSSSettings.objects.get_or_create(
+        project=project,
+        defaults={
+            'is_active': False,
+        }
+    )
+    
+    # Update settings from form (Global Settings)
+    rss_settings.check_interval_minutes = int(request.POST.get('check_interval_minutes', 60))
+    rss_settings.max_posts_per_day = int(request.POST.get('max_posts_per_day', 5))
+    rss_settings.is_active = 'is_active' in request.POST
+    rss_settings.auto_publish = 'auto_publish' in request.POST
+    rss_settings.download_images = 'download_images' in request.POST
+    rss_settings.include_source_attribution = 'include_source_attribution' in request.POST
+    
+    rss_settings.save()
+    
+    messages.success(request, 'Configurações RSS globais salvas com sucesso!')
+    return redirect('projects:detail', project_id=project.id)
+
+
+@login_required
+@project_access_required
+def rss_feed_create_view(request, project_id):
+    """Add a new RSS feed to the project."""
+    project = request.project
+    
+    if request.method == 'POST':
+        feed_url = request.POST.get('feed_url', '').strip()
+        name = request.POST.get('name', '').strip()
+        
+        if not feed_url:
+            messages.error(request, 'URL do feed é obrigatória.')
+            return redirect('projects:detail', project_id=project.id)
+            
+        try:
+            from services.rss import RSSService
+            rss_service = RSSService()
+            is_valid, message = rss_service.validate_feed_url(feed_url)
+            
+            if is_valid:
+                RSSFeed.objects.create(
+                    project=project,
+                    feed_url=feed_url,
+                    name=name or message.split(' ')[0] # Simple fallback or just url
+                )
+                messages.success(request, 'Feed adicionado com sucesso!')
+            else:
+                messages.error(request, f'Erro ao validar feed: {message}')
+        except Exception as e:
+            messages.error(request, f'Erro ao adicionar feed: {e}')
+            
+    return redirect('projects:detail', project_id=project.id)
+
+
+@login_required
+@project_access_required
+def rss_feed_delete_view(request, project_id, feed_id):
+    """Delete an RSS feed."""
+    feed = get_object_or_404(RSSFeed, id=feed_id, project=request.project)
+    
+    if request.method == 'POST':
+        feed.delete()
+        messages.success(request, 'Feed removido com sucesso.')
+        
+    return redirect('projects:detail', project_id=project_id)

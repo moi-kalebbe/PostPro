@@ -1,4 +1,9 @@
-{% extends 'base.html' %}
+
+import os
+
+TEMPLATE_PATH = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\projects\detail.html'
+
+CONTENT = r'''{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ project.name }} - PostPro{% endblock %}
@@ -654,4 +659,9 @@
         const deleteUrl = `/projects/${PROJECT_ID}/editorial-items/delete-all/`;
     }
 </script>
-{% endblock %}
+{% endblock %}'''
+
+with open(TEMPLATE_PATH, 'w', encoding='utf-8') as f:
+    f.write(CONTENT)
+
+print(f"Sucesso! Arquivo {TEMPLATE_PATH} reescrito conforme Design System.")

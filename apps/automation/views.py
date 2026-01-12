@@ -582,3 +582,48 @@ def costs_dashboard_view(request):
     }
     
     return render(request, 'automation/costs_dashboard.html', context)
+
+
+@login_required
+@agency_required
+def rss_dashboard_view(request):
+    """
+    Dashboard global para RSS Feeds.
+    Visualização de feeds ativos, itens processados e status.
+    """
+    from apps.projects.models import RSSFeed, ProjectRSSSettings
+    from .models import RSSItem
+    from django.db.models import Count, Sum, Q
+    from django.utils import timezone
+    
+    agency = request.user.agency
+    
+    # 1. Stats
+    total_feeds = RSSFeed.objects.filter(project__agency=agency).count()
+    active_feeds = RSSFeed.objects.filter(project__agency=agency, is_active=True).count()
+    
+    # Items processed today (global across all projects)
+    processed_today = ProjectRSSSettings.objects.filter(
+        project__agency=agency
+    ).aggregate(total=Sum('items_processed_today'))['total'] or 0
+    
+    # 2. Recent Items Stream (Global)
+    recent_items = RSSItem.objects.filter(
+        project__agency=agency
+    ).select_related('project').order_by('-created_at')[:50]
+    
+    # 3. Feeds Status List
+    feeds = RSSFeed.objects.filter(
+        project__agency=agency
+    ).select_related('project').order_by('-last_checked_at')
+    
+    context = {
+        'total_feeds': total_feeds,
+        'active_feeds': active_feeds,
+        'processed_today': processed_today,
+        'recent_items': recent_items,
+        'feeds': feeds,
+        'active_tab': 'rss',
+    }
+    
+    return render(request, 'automation/rss_dashboard.html', context)

@@ -252,3 +252,122 @@ class ProjectContentSettings(models.Model):
             return []
         return [t.strip() for t in self.avoid_topics.split('\n') if t.strip()]
 
+
+class ProjectRSSSettings(models.Model):
+    """
+    Per-project RSS feed configuration for automated news generation.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.OneToOneField(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='rss_settings'
+    )
+    
+    # Feed Configuration
+    feed_url = models.URLField(
+        max_length=1000,
+        blank=True,
+        help_text='URL do feed RSS (ex: https://rss.app/feeds/xxx.xml)'
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text='Ativar monitoramento automático do feed'
+    )
+    
+    # Processing Settings
+    check_interval_minutes = models.PositiveIntegerField(
+        default=60,
+        help_text='Intervalo entre verificações (minutos)'
+    )
+    auto_publish = models.BooleanField(
+        default=False,
+        help_text='Publicar automaticamente no WordPress'
+    )
+    max_posts_per_day = models.PositiveIntegerField(
+        default=5,
+        help_text='Limite máximo de posts por dia'
+    )
+    
+    # Content Settings
+    download_images = models.BooleanField(
+        default=True,
+        help_text='Baixar imagens do feed para Supabase'
+    )
+    include_source_attribution = models.BooleanField(
+        default=True,
+        help_text='Incluir atribuição à fonte original no post'
+    )
+    
+    # Filtering
+    required_keywords = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Palavras-chave obrigatórias (título ou descrição deve conter)'
+    )
+    blocked_keywords = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Palavras-chave bloqueadas (ignorar itens que contenham)'
+    )
+    
+    # Tracking
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    items_processed_today = models.PositiveIntegerField(default=0)
+    last_reset_date = models.DateField(null=True, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'project_rss_settings'
+        verbose_name = 'Project RSS Settings'
+        verbose_name_plural = 'Project RSS Settings'
+    
+    def __str__(self):
+        status = "Active" if self.is_active else "Inactive"
+        return f"RSS for {self.project.name} ({status})"
+    
+    def reset_daily_counter(self):
+        """Reset daily counter if date changed."""
+        from datetime import date
+        today = date.today()
+        if self.last_reset_date != today:
+            self.items_processed_today = 0
+            self.last_reset_date = today
+            self.save(update_fields=['items_processed_today', 'last_reset_date'])
+    
+    def can_process_more_today(self) -> bool:
+        """Check if we can process more items today."""
+        self.reset_daily_counter()
+        return self.items_processed_today < self.max_posts_per_day
+    
+    def increment_daily_counter(self):
+        """Increment items processed today."""
+        self.items_processed_today += 1
+        self.save(update_fields=['items_processed_today'])
+
+
+class RSSFeed(models.Model):
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='rss_feeds',
+        help_text='Projeto ao qual este feed pertence'
+    )
+    name = models.CharField(max_length=255, blank=True, help_text="Nome opcional para identificar o feed")
+    feed_url = models.URLField(max_length=1000, help_text="URL do feed RSS (XML)")
+    is_active = models.BooleanField(default=True)
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'project_rss_feeds'
+        verbose_name = 'RSS Feed'
+        verbose_name_plural = 'RSS Feeds'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name or self.feed_url

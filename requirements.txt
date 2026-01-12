@@ -24,6 +24,7 @@ Pillow==10.1.0
 
 # HTTP
 requests==2.31.0
+feedparser==6.0.10
 
 # Payments
 stripe==7.8.0

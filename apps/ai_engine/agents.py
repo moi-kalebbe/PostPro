@@ -752,3 +752,312 @@ def run_full_pipeline(
         post.save()
         logger.error(f"Pipeline failed for post {post.id}: {e}")
         raise
+
+
+# ============================================================================
+# News Rewrite Agent (for RSS Feed Posts)
+# ============================================================================
+
+class NewsRewriteAgent(BaseAgent):
+    """
+    Agent for rewriting news articles from RSS feeds.
+    
+    Unlike the standard pipeline, this agent:
+    - Does NOT use ResearchAgent (content already exists)
+    - Rewrites in journalistic style
+    - Uses NewsArticle schema (not BlogPosting)
+    - Includes source attribution
+    """
+    
+    def _get_system_prompt(self) -> str:
+        """Build system prompt for news rewriting."""
+        return f"""Você é um editor de notícias profissional. Sua tarefa é reescrever uma notícia de outro portal para o blog do cliente, mantendo a precisão das informações mas usando suas próprias palavras.
+
+IDIOMA: Escreva TODA a resposta em {self.language}.
+
+REGRAS CRÍTICAS:
+1. REESCREVA completamente - NÃO copie o texto original
+2. Mantenha TODOS os fatos e dados precisos
+3. Use tom jornalístico profissional
+4. NÃO invente informações que não estão na notícia original
+5. Estruture como notícia: Lead (quem, o quê, quando, onde) → Detalhes → Contexto
+6. Inclua citações se houver na original (entre aspas)
+7. Comprimento: 400-800 palavras
+
+FORMATO DE SAÍDA (HTML):
+- Use <p> para parágrafos
+- Use <h2> para subtítulos se necessário
+- Use <strong> para destaques
+- Use <blockquote> para citações
+- NÃO use <h1> (título é separado)
+- NÃO inclua scripts ou estilos
+
+Retorne APENAS o conteúdo HTML reescrito, sem explicações."""
+    
+    def run(
+        self,
+        original_title: str,
+        original_content: str,
+        source_url: str,
+        source_name: str,
+    ) -> dict:
+        """
+        Rewrite a news article.
+        
+        Args:
+            original_title: Original article title
+            original_content: Original article content/description
+            source_url: URL of the original article
+            source_name: Name of the source portal
+        
+        Returns:
+            dict with 'title', 'content', 'meta_description', 'slug'
+        """
+        system_prompt = self._get_system_prompt()
+        
+        input_prompt = f"""Reescreva a seguinte notícia para o blog:
+
+TÍTULO ORIGINAL: {original_title}
+
+CONTEÚDO ORIGINAL:
+{original_content}
+
+FONTE: {source_name} ({source_url})
+
+---
+
+Crie:
+1. Um NOVO título SEO-otimizado (máximo 60 caracteres)
+2. Uma meta descrição (máximo 160 caracteres)
+3. Um slug URL-friendly
+4. O conteúdo reescrito em HTML
+
+Formate sua resposta EXATAMENTE assim:
+TÍTULO: [seu novo título]
+META: [sua meta descrição]
+SLUG: [seu-slug-aqui]
+CONTEÚDO:
+[seu HTML aqui]"""
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": input_prompt},
+        ]
+        
+        # Generate rewritten content
+        result = self._run_with_fallback(
+            "News Rewrite",
+            self.openrouter.generate_text,
+            messages=messages,
+            model=self.project.get_text_model(),
+            max_tokens=4096,
+        )
+        
+        # Parse response
+        content = result.content
+        parsed = self._parse_response(content)
+        
+        # Add source attribution at the end
+        if self.content_settings.include_source_attribution if hasattr(self, 'content_settings') and self.content_settings else True:
+            attribution = f'''
+<p class="news-source-attribution" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9em; color: #666;">
+    <em>Notícia originalmente publicada em <a href="{source_url}" rel="nofollow noopener" target="_blank">{source_name}</a>.</em>
+</p>'''
+            parsed['content'] += attribution
+        
+        # Sanitize HTML
+        parsed['content'] = self._sanitize_html(parsed['content'])
+        
+        # Save artifact
+        PostArtifact.objects.create(
+            post=self.post,
+            step=PostArtifact.Step.ARTICLE,
+            input_prompt=input_prompt,
+            system_prompt=system_prompt,
+            model_used=result.model,
+            provider_response=result.raw,
+            parsed_output=parsed,
+            tokens_used=result.usage.get("total_tokens", 0),
+            cost=result.cost,
+            is_active=True,
+        ).deactivate_previous()
+        
+        # Update post
+        self.post.title = parsed['title']
+        self.post.content = parsed['content']
+        self.post.meta_description = parsed['meta_description']
+        self.post.text_generation_cost += result.cost
+        self.post.tokens_total += result.usage.get("total_tokens", 0)
+        self.post.step_state["article"] = "completed"
+        self.post.save()
+        
+        return parsed
+    
+    def _parse_response(self, content: str) -> dict:
+        """Parse structured response from AI."""
+        import re
+        
+        result = {
+            'title': '',
+            'meta_description': '',
+            'slug': '',
+            'content': '',
+        }
+        
+        # Extract title
+        title_match = re.search(r'TÍTULO:\s*(.+?)(?:\n|META:)', content, re.DOTALL)
+        if title_match:
+            result['title'] = title_match.group(1).strip()
+        
+        # Extract meta
+        meta_match = re.search(r'META:\s*(.+?)(?:\n|SLUG:)', content, re.DOTALL)
+        if meta_match:
+            result['meta_description'] = meta_match.group(1).strip()[:160]
+        
+        # Extract slug
+        slug_match = re.search(r'SLUG:\s*(.+?)(?:\n|CONTEÚDO:)', content, re.DOTALL)
+        if slug_match:
+            result['slug'] = slug_match.group(1).strip().lower()
+        
+        # Extract content (everything after CONTEÚDO:)
+        content_match = re.search(r'CONTEÚDO:\s*(.+)', content, re.DOTALL)
+        if content_match:
+            result['content'] = content_match.group(1).strip()
+        
+        # Fallback: if parsing failed, use entire content
+        if not result['content']:
+            result['content'] = content
+        if not result['title']:
+            result['title'] = self.post.keyword[:60]
+        
+        return result
+    
+    def _sanitize_html(self, html: str) -> str:
+        """Remove potentially dangerous elements from HTML."""
+        import re
+        # Remove script tags
+        html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        # Remove style tags
+        html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        # Remove on* event handlers
+        html = re.sub(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', '', html, flags=re.IGNORECASE)
+        # Remove h1 tags
+        html = re.sub(r'<h1[^>]*>.*?</h1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        return html.strip()
+
+
+def run_news_pipeline(
+    post: Post,
+    openrouter: OpenRouterService,
+    rss_item,  # RSSItem instance
+    generate_image: bool = True,
+    download_source_image: bool = True,
+) -> Post:
+    """
+    Run the news rewrite pipeline for an RSS item.
+    
+    Args:
+        post: Post instance to populate
+        openrouter: Configured OpenRouter service
+        rss_item: RSSItem with source data
+        generate_image: Whether to generate featured image
+        download_source_image: Try to use source image first
+    
+    Returns:
+        Updated Post instance
+    """
+    from apps.automation.models import RSSItem
+    
+    logger.info(f"Starting news pipeline for post {post.id}: {rss_item.source_title[:50]}")
+    
+    try:
+        # Mark RSS item as processing
+        rss_item.mark_processing()
+        
+        # Step 1: Rewrite Article
+        news_agent = NewsRewriteAgent(openrouter, post)
+        result = news_agent.run(
+            original_title=rss_item.source_title,
+            original_content=rss_item.source_description,
+            source_url=rss_item.source_url,
+            source_name=post.source_name,
+        )
+        
+        # Update SEO data for NewsArticle schema
+        post.seo_data = {
+            'keyword': post.keyword,
+            'seo_title': post.title,
+            'seo_description': post.meta_description,
+            'slug': result.get('slug', ''),
+            'article_type': 'NewsArticle',
+            'article_schema': {
+                'headline': post.title,
+                'description': post.meta_description,
+                'keywords': post.keyword,
+            },
+        }
+        post.save()
+        
+        # Step 2: Handle Image
+        if generate_image:
+            image_url = None
+            
+            # Try source image first
+            if download_source_image and rss_item.source_image_url:
+                try:
+                    from services.storage import SupabaseStorageService
+                    import uuid
+                    
+                    # Download and upload to Supabase
+                    image_url = SupabaseStorageService.upload_from_url(
+                        rss_item.source_image_url,
+                        f"news_{post.id}_{uuid.uuid4().hex[:8]}"
+                    )
+                    logger.info(f"Downloaded source image to: {image_url}")
+                except Exception as e:
+                    logger.warning(f"Failed to download source image: {e}")
+            
+            # Fallback to AI-generated image
+            if not image_url:
+                try:
+                    image_agent = ImageAgent(openrouter, post)
+                    image_result = image_agent.run(post.title)
+                    
+                    if image_result:
+                        # Handle base64 or URL
+                        if image_result.startswith("data:"):
+                            from services.storage import SupabaseStorageService
+                            import uuid
+                            image_url = SupabaseStorageService.upload_base64_image(
+                                image_result,
+                                f"news_{post.id}_{uuid.uuid4().hex[:8]}"
+                            )
+                        else:
+                            image_url = image_result
+                except Exception as e:
+                    logger.warning(f"Image generation failed: {e}")
+            
+            if image_url:
+                post.featured_image_url = image_url
+                post.save()
+        
+        # Update total cost
+        post.update_total_cost()
+        
+        # Update status
+        post.status = Post.Status.PENDING_REVIEW
+        post.article_type = Post.ArticleType.NEWS
+        post.save()
+        
+        # Mark RSS item as completed
+        rss_item.mark_completed(post)
+        
+        logger.info(f"News pipeline completed for post {post.id}")
+        return post
+        
+    except Exception as e:
+        post.status = Post.Status.FAILED
+        post.save()
+        rss_item.mark_failed(str(e))
+        logger.error(f"News pipeline failed for post {post.id}: {e}")
+        raise

@@ -26,6 +26,9 @@ urlpatterns = [
     # Costs
     path('costs/', views.costs_dashboard_view, name='costs_dashboard'),
     
+    # RSS Dashboard
+    path('rss-dashboard/', views.rss_dashboard_view, name='rss_dashboard'),
+    
     # REMOVED: CSV Upload feature - keywords now sent via WordPress plugin
     # path('projects/<uuid:project_id>/batch-upload/', views.batch_upload_submit_view, name='batch_upload_submit'),
 ]
