@@ -1,0 +1,126 @@
+"""
+Script to fix agency_form.html with proper Django template syntax spacing.
+"""
+
+template_content = '''{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if edit_mode %}Editar{% else %}Nova{% endif %} Agência - PostPro Admin{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar_admin.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">{% if edit_mode %}Editar{% else %}Nova{% endif %} Agência</h1>
+        <a href="{% url 'admin_panel:agencies_list' %}" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5"></path>
+                <path d="M12 19l-7-7 7-7"></path>
+            </svg>
+            Voltar
+        </a>
+    </div>
+
+    <form method="post" class="card">
+        {% csrf_token %}
+        <div class="card-header">
+            <h3 class="card-title">Dados da Agência</h3>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Nome da Agência *</label>
+                    <input type="text" name="agency_name" class="form-input" required 
+                           value="{% if agency %}{{ agency.name }}{% elif form_data %}{{ form_data.agency_name }}{% endif %}"
+                           placeholder="Ex: Marketing Digital ABC">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Plano *</label>
+                    <select name="plan" class="form-select" required>
+                        <option value="starter" {% if agency.plan == 'starter' or form_data.plan == 'starter' %}selected{% endif %}>
+                            Starter (10 projetos, 100 posts/mês)
+                        </option>
+                        <option value="pro" {% if agency.plan == 'pro' or form_data.plan == 'pro' %}selected{% endif %}>
+                            Pro (50 projetos, 500 posts/mês)
+                        </option>
+                        <option value="enterprise" {% if agency.plan == 'enterprise' or form_data.plan == 'enterprise' %}selected{% endif %}>
+                            Enterprise (100 projetos, 2.000 posts/mês)
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="my-6">
+            <h4 class="text-lg font-semibold mb-4">Dados do Responsável</h4>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Nome do Responsável {% if not edit_mode %}*{% endif %}</label>
+                    <input type="text" name="owner_name" class="form-input" {% if not edit_mode %}required{% endif %}
+                           value="{% if agency %}{{ agency.owner_name }}{% elif form_data %}{{ form_data.owner_name }}{% endif %}"
+                           placeholder="Ex: João Silva">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Telefone (WhatsApp) {% if not edit_mode %}*{% endif %}</label>
+                    <input type="tel" name="owner_phone" class="form-input" {% if not edit_mode %}required{% endif %}
+                           value="{% if agency %}{{ agency.owner_phone }}{% elif form_data %}{{ form_data.owner_phone }}{% endif %}"
+                           placeholder="Ex: (19) 99999-9999">
+                    {% if not edit_mode %}
+                    <small class="text-muted">Será usado como login e para receber credenciais</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email (opcional)</label>
+                    <input type="email" name="owner_email" class="form-input"
+                           value="{% if agency %}{{ agency.owner_email }}{% elif form_data %}{{ form_data.owner_email }}{% endif %}"
+                           placeholder="Ex: joao@empresa.com">
+                </div>
+            </div>
+
+            {% if not edit_mode %}
+            <hr class="my-6">
+
+            <div class="form-group">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="send_whatsapp" checked class="form-checkbox">
+                    <span>Enviar credenciais via WhatsApp</span>
+                </label>
+                <small class="text-muted">Se marcado, o responsável receberá login e senha por WhatsApp</small>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer flex justify-end gap-2">
+            <a href="{% url 'admin_panel:agencies_list' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Salvar Alterações
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                </svg>
+                Criar Agência
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+'''
+
+with open(r'c:\\Users\\olx\\OneDrive\\Desktop\\PROJETOS 2026\\PostPro\\templates\\admin_panel\\agency_form.html', 'w', encoding='utf-8') as f:
+    f.write(template_content)
+
+print("Template rewritten successfully!")

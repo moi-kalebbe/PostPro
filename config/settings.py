@@ -150,11 +150,11 @@ STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')
 
 # Site Configuration
-SITE_URL = env('SITE_URL', default='http://localhost:8000')
+SITE_URL = env('SITE_URL', default='https://postpro.nuvemchat.com')
 PLUGIN_DOWNLOAD_URL = env('PLUGIN_DOWNLOAD_URL', default='')
 
 # Wuzapi (WhatsApp)
-WUZAPI_ADMIN_TOKEN = env('WUZAPI_ADMIN_TOKEN', default='')
+WUZAPI_ADMIN_TOKEN = env('WUZAPI_ADMIN_TOKEN', default='ca190e9b7a558e7cec2cea01bd88b99c')
 
 # Login URLs
 LOGIN_URL = '/auth/login/'

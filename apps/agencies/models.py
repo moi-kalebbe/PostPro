@@ -15,6 +15,13 @@ import requests
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 
+# Limites por plano da plataforma
+PLAN_LIMITS = {
+    'starter': {'max_projects': 10, 'monthly_posts_limit': 100},
+    'pro': {'max_projects': 50, 'monthly_posts_limit': 500},
+    'enterprise': {'max_projects': 100, 'monthly_posts_limit': 2000},
+}
+
 def validate_image_size(file):
     """Valida tamanho máximo de 2MB para logos e 500KB para favicon"""
     limit_mb = 2 if 'logo' in file.name.lower() else 0.5
@@ -65,6 +72,22 @@ class Agency(models.Model):
     max_projects = models.PositiveIntegerField(default=3)
     monthly_posts_limit = models.PositiveIntegerField(default=100)
     current_month_posts = models.PositiveIntegerField(default=0)
+    
+    # Owner/Responsible information
+    owner_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nome do responsável pela agência"
+    )
+    owner_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Telefone do responsável (usado para login e WhatsApp)"
+    )
+    owner_email = models.EmailField(
+        blank=True,
+        help_text="Email do responsável (opcional)"
+    )
     
     # OpenRouter API (BYOK - encrypted)
     openrouter_api_key_encrypted = models.TextField(blank=True, null=True)
@@ -296,3 +319,99 @@ class Agency(models.Model):
         """Reset monthly post counter (call on billing cycle)."""
         self.current_month_posts = 0
         self.save(update_fields=['current_month_posts'])
+
+
+class AgencyClientPlan(models.Model):
+    """
+    Planos que cada agência cria para seus clientes.
+    Cada agência pode definir seus próprios planos com limites e preços.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agency = models.ForeignKey(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name='client_plans'
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Nome do plano (ex: Bronze, Prata, Ouro)"
+    )
+    posts_per_month = models.PositiveIntegerField(
+        default=30,
+        help_text="Limite de posts por mês para clientes deste plano"
+    )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Preço mensal (opcional)"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'agency_client_plans'
+        verbose_name = 'Agency Client Plan'
+        verbose_name_plural = 'Agency Client Plans'
+        ordering = ['agency', 'posts_per_month']
+    
+    def __str__(self):
+        return f"{self.agency.name} - {self.name} ({self.posts_per_month} posts/mês)"
+
+
+class SuperAdminConfig(models.Model):
+    """
+    Configurações globais do SuperAdmin (singleton).
+    Inclui configurações de WhatsApp para envio de credenciais.
+    """
+    # WhatsApp/Wuzapi settings (mesmo padrão da Agency)
+    wuzapi_instance_url = models.URLField(
+        default="https://wuzapi.nuvemchat.com",
+        help_text="URL da instância Wuzapi"
+    )
+    wuzapi_user_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="ID do usuário na Wuzapi"
+    )
+    wuzapi_token = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Token de autenticação"
+    )
+    wuzapi_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Número WhatsApp conectado"
+    )
+    wuzapi_connected = models.BooleanField(
+        default=False,
+        help_text="Status da conexão"
+    )
+    wuzapi_connected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Data/hora da última conexão"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'superadmin_config'
+        verbose_name = 'Super Admin Config'
+        verbose_name_plural = 'Super Admin Configs'
+    
+    def __str__(self):
+        status = "Conectado" if self.wuzapi_connected else "Desconectado"
+        return f"SuperAdmin Config - WhatsApp {status}"
+    
+    @classmethod
+    def get_instance(cls):
+        """Retorna a única instância ou cria uma nova."""
+        instance, _ = cls.objects.get_or_create(pk=1)
+        return instance
+

@@ -110,6 +110,7 @@
             </div>
             <div class="card-body">
                 <div class="flex flex-col gap-2">
+                    <!-- RESET MONTHLY POSTS -->
                     <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="reset_posts">
@@ -119,10 +120,33 @@
                         </button>
                     </form>
 
+                    <!-- RESEND CREDENTIALS -->
+                    <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="resend_credentials">
+                        <button type="submit" class="btn btn-outline-info" style="width: 100%;"
+                            onclick="return confirm('Isso irá gerar uma NOVA SENHA e enviar pelo WhatsApp. Deseja continuar?')">
+                            Reenviar Acesso (WhatsApp)
+                        </button>
+                    </form>
+
+                    <!-- EDIT -->
                     <a href="/django-admin/agencies/agency/{{ agency.id }}/change/" class="btn btn-ghost"
                         style="width: 100%;">
                         Editar no Django Admin
                     </a>
+
+                    <!-- DELETE (DANGER ZONE) -->
+                    <div style="margin-top: 1rem; border-top: 1px solid #fee2e2; padding-top: 1rem;">
+                        <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <button type="submit" class="btn btn-error" style="width: 100%;"
+                                onclick="return confirm('ATENÇÃO: Isso excluirá permanentemente a agência, seus projetos e usuários. Esta ação não pode ser desfeita. Continuar?')">
+                                Excluir Agência
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

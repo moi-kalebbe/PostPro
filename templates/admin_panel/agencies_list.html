@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Agências - PostPro Admin{% endblock %}
@@ -11,6 +11,13 @@
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Agências</h1>
+        <a href="{% url 'admin_panel:agency_create' %}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+            </svg>
+            Nova Agência
+        </a>
     </div>
 
     <!-- Filters -->
@@ -21,11 +28,9 @@
                     <label class="form-label">Plano</label>
                     <select name="plan" class="form-select" onchange="this.form.submit()">
                         <option value="">Todos</option>
-                        <option value="starter" {% if plan_filter == 'starter' %}selected{% endif %}>Starter</option>
-                        <option value="professional" {% if plan_filter == 'professional' %}selected{% endif %}>
-                            Professional</option>
-                        <option value="enterprise" {% if plan_filter == 'enterprise' %}selected{% endif %}>Enterprise
-                        </option>
+                        <option value="starter" {% if plan_filter == "starter" %}selected{% endif %}>Starter</option>
+                        <option value="pro" {% if plan_filter == "pro" %}selected{% endif %}>Pro</option>
+                        <option value="enterprise" {% if plan_filter == "enterprise" %}selected{% endif %}>Enterprise</option>
                     </select>
                 </div>
 
@@ -33,17 +38,15 @@
                     <label class="form-label">Status</label>
                     <select name="status" class="form-select" onchange="this.form.submit()">
                         <option value="">Todos</option>
-                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Ativo</option>
-                        <option value="trial" {% if status_filter == 'trial' %}selected{% endif %}>Trial</option>
-                        <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspenso
-                        </option>
+                        <option value="active" {% if status_filter == "active" %}selected{% endif %}>Ativo</option>
+                        <option value="trial" {% if status_filter == "trial" %}selected{% endif %}>Trial</option>
+                        <option value="suspended" {% if status_filter == "suspended" %}selected{% endif %}>Suspenso</option>
                     </select>
                 </div>
 
                 <div class="form-group mb-0 flex-1" style="min-width: 200px;">
                     <label class="form-label">Buscar</label>
-                    <input type="text" name="search" class="form-input" value="{{ search }}"
-                        placeholder="Nome ou slug..." data-search>
+                    <input type="text" name="search" class="form-input" value="{{ search }}" placeholder="Nome ou slug..." data-search>
                 </div>
             </form>
         </div>
@@ -55,13 +58,13 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>AgÃªncia</th>
+                        <th>Agência</th>
                         <th>Plano</th>
                         <th>Projetos</th>
-                        <th>Posts/MÃªs</th>
+                        <th>Posts/Mês</th>
                         <th>Status</th>
                         <th>Criada em</th>
-                        <th>AÃ§Ãµes</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,62 +75,66 @@
                             <div class="text-xs text-muted">{{ agency.slug }}</div>
                         </td>
                         <td>
-                            <span
-                                class="badge badge-{% if agency.plan == 'enterprise' %}primary{% elif agency.plan == 'professional' %}info{% else %}gray{% endif %}">
-                                {{ agency.get_plan_display }}
-                            </span>
+                            {% if agency.plan == "enterprise" %}
+                            <span class="badge badge-primary">{{ agency.get_plan_display }}</span>
+                            {% elif agency.plan == "pro" %}
+                            <span class="badge badge-info">{{ agency.get_plan_display }}</span>
+                            {% else %}
+                            <span class="badge badge-gray">{{ agency.get_plan_display }}</span>
+                            {% endif %}
                         </td>
                         <td>{{ agency.projects_count }} / {{ agency.max_projects }}</td>
                         <td>
                             <div class="flex items-center gap-2">
                                 <span>{{ agency.current_month_posts }} / {{ agency.monthly_posts_limit }}</span>
                                 <div class="progress" style="width: 60px;">
-                                    <div class="progress-bar"
-                                        style="width: {% widthratio agency.current_month_posts agency.monthly_posts_limit 100 %}%">
-                                    </div>
+                                    <div class="progress-bar" style="width: {% widthratio agency.current_month_posts agency.monthly_posts_limit 100 %}%"></div>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span
-                                class="badge badge-{% if agency.subscription_status == 'active' %}success{% elif agency.subscription_status == 'suspended' %}error{% else %}warning{% endif %}">
-                                {{ agency.get_subscription_status_display }}
-                            </span>
+                            {% if agency.subscription_status == "active" %}
+                            <span class="badge badge-success">{{ agency.get_subscription_status_display }}</span>
+                            {% elif agency.subscription_status == "suspended" %}
+                            <span class="badge badge-error">{{ agency.get_subscription_status_display }}</span>
+                            {% else %}
+                            <span class="badge badge-warning">{{ agency.get_subscription_status_display }}</span>
+                            {% endif %}
                         </td>
                         <td class="text-muted">{{ agency.created_at|date:"d/m/Y" }}</td>
                         <td>
                             <div class="flex gap-1">
-                                <a href="{% url 'admin_panel:agency_detail' agency.id %}" class="btn btn-ghost btn-sm"
-                                    title="Detalhes">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2">
+                                <a href="{% url 'admin_panel:agency_detail' agency.id %}" class="btn btn-ghost btn-sm" title="Detalhes">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
                                 </a>
 
-                                {% if agency.subscription_status == 'active' %}
-                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}"
-                                    style="display: inline;">
+                                <a href="{% url 'admin_panel:agency_edit' agency.id %}" class="btn btn-ghost btn-sm" title="Editar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </a>
+
+                                {% if agency.subscription_status == "active" %}
+                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="suspend">
-                                    <button type="submit" class="btn btn-ghost btn-sm text-warning" title="Suspender"
-                                        onclick="return confirm('Suspender esta agÃªncia?')">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button type="submit" class="btn btn-ghost btn-sm text-warning" title="Suspender" onclick="return confirm('Suspender esta agência?')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <rect x="6" y="4" width="4" height="16"></rect>
                                             <rect x="14" y="4" width="4" height="16"></rect>
                                         </svg>
                                     </button>
                                 </form>
-                                {% elif agency.subscription_status == 'suspended' %}
-                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}"
-                                    style="display: inline;">
+                                {% elif agency.subscription_status == "suspended" %}
+                                <form method="post" action="{% url 'admin_panel:agency_action' agency.id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="activate">
                                     <button type="submit" class="btn btn-ghost btn-sm text-success" title="Ativar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <polygon points="5 3 19 12 5 21 5 3"></polygon>
                                         </svg>
                                     </button>
@@ -140,7 +147,7 @@
                     <tr>
                         <td colspan="7">
                             <div class="empty-state">
-                                <h3 class="empty-state-title">Nenhuma agÃªncia encontrada</h3>
+                                <h3 class="empty-state-title">Nenhuma agência encontrada</h3>
                             </div>
                         </td>
                     </tr>
@@ -153,14 +160,11 @@
         <div class="card-footer">
             <div class="flex justify-center gap-2">
                 {% if agencies.has_previous %}
-                <a href="?page={{ agencies.previous_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}"
-                    class="btn btn-secondary btn-sm">Anterior</a>
+                <a href="?page={{ agencies.previous_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}" class="btn btn-secondary btn-sm">Anterior</a>
                 {% endif %}
-                <span class="btn btn-ghost btn-sm">PÃ¡gina {{ agencies.number }} de {{ agencies.paginator.num_pages
-                    }}</span>
+                <span class="btn btn-ghost btn-sm">Página {{ agencies.number }} de {{ agencies.paginator.num_pages }}</span>
                 {% if agencies.has_next %}
-                <a href="?page={{ agencies.next_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}"
-                    class="btn btn-secondary btn-sm">PrÃ³xima</a>
+                <a href="?page={{ agencies.next_page_number }}&plan={{ plan_filter }}&status={{ status_filter }}&search={{ search }}" class="btn btn-secondary btn-sm">Próxima</a>
                 {% endif %}
             </div>
         </div>

@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp - PostPro Admin{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar_admin.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- HEADER -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Configurar WhatsApp</h1>
+            <p class="text-muted">Gerencie a conexão do WhatsApp para envio de notificações</p>
+        </div>
+        <div>
+            <button id="btn-refresh" class="btn btn-secondary" onclick="checkStatus()">
+                Atualizar Status
+            </button>
+        </div>
+    </div>
+
+    <!-- STATS (4 cards) -->
+    <div class="stats-grid mb-6">
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Status</span>
+                <span id="status-badge"
+                    class="stat-value text-sm {% if config.wuzapi_connected %}text-success{% else %}text-warning{% endif %}">
+                    {% if config.wuzapi_connected %}Conectado{% else %}Desconectado{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Telefone</span>
+                <span id="phone-display" class="stat-value text-sm">
+                    {{ config.wuzapi_phone|default:"-" }}
+                </span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Última Conexão</span>
+                <span class="stat-value text-sm">
+                    {% if config.wuzapi_connected_at %}{{ config.wuzapi_connected_at|date:"d/m/Y H:i" }}{% else %}-{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body stat-card">
+                <span class="stat-label">Uso</span>
+                <span class="stat-value text-sm">Notificações</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRID 2 COLUNAS -->
+    <div class="grid-responsive-2">
+        <!-- CARD CONEXÃO -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Conexão</h3>
+            </div>
+            <div class="card-body">
+                <!-- Estado 1: Botão Iniciar -->
+                <div id="connect-section"
+                    style="{% if config.wuzapi_connected %}display: none;{% else %}display: block;{% endif %}">
+                    <button id="btn-connect" class="btn btn-primary" onclick="startConnection()">
+                        Iniciar Conexão
+                    </button>
+                </div>
+
+                <!-- Estado 2: QR Code -->
+                <div id="qr-section" class="hidden">
+                    <div id="qr-placeholder">Carregando QR Code...</div>
+                    <div id="qr-code" class="hidden">
+                        <img id="qr-image" src="" alt="QR Code" style="max-width: 100%; height: auto;">
+                    </div>
+                </div>
+
+                <!-- Estado 3: Conectado -->
+                <div id="connected-section"
+                    style="{% if config.wuzapi_connected %}display: block;{% else %}display: none;{% endif %}">
+                    <p class="text-success mb-4">WhatsApp Conectado</p>
+                    <button class="btn btn-error" onclick="disconnectWhatsApp()">
+                        Desconectar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD INFO TÉCNICA -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Informações Técnicas</h3>
+            </div>
+            <div class="card-body">
+                <!-- Info da API -->
+                <div class="mb-4">
+                    <span class="text-muted text-sm d-block">ID do Usuário</span>
+                    <code
+                        class="text-sm bg-gray-100 p-1 rounded">{{ config.wuzapi_user_id|default:"Não definido" }}</code>
+                </div>
+
+                <button class="btn btn-outline-danger btn-sm" onclick="resetConfig()">
+                    Resetar Configuração
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JAVASCRIPT COM LOGGING DETALHADO
+    async function startConnection() {
+        console.log("=== INICIANDO CONEXÃO ===");
+        const btn = document.getElementById('btn-connect');
+        btn.disabled = true;
+        btn.innerText = 'Processando...';
+
+        try {
+            // 2. Create User
+            console.log("Passo 1: Create User");
+            const createResp = await fetch("{% url 'admin_panel:superadmin_whatsapp_connect' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'create_user' })
+            });
+            const createData = await createResp.json();
+            console.log("Create User Response:", createData);
+
+            if (!createData.success) {
+                alert('Erro ao criar usuário: ' + createData.message);
+                btn.disabled = false;
+                btn.innerText = 'Iniciar Conexão';
+                return;
+            }
+
+            // 3. Connect
+            console.log("Passo 2: Connect");
+            const connectResp = await fetch("{% url 'admin_panel:superadmin_whatsapp_connect' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'connect' })
+            });
+            const connectData = await connectResp.json();
+            console.log("Connect Response:", connectData);
+
+            if (!connectData.success) {
+                alert('Erro ao conectar: ' + connectData.message + '\nDetalhe: ' + (connectData.detail || 'N/A'));
+                btn.disabled = false;
+                btn.innerText = 'Iniciar Conexão';
+                return;
+            }
+
+            // 4. Mostrar UI do QR
+            document.getElementById('connect-section').style.display = 'none';
+            document.getElementById('qr-section').classList.remove('hidden');
+
+            // 5. Polling QR
+            if (connectData.qrcode) {
+                displayQRCode(connectData.qrcode);
+            } else {
+                startPollingForQR();
+            }
+
+            // 6. Polling Status
+            startPolling();
+
+        } catch (error) {
+            console.error("Erro:", error);
+            alert('Erro: ' + error.message);
+            btn.disabled = false;
+            btn.innerText = 'Iniciar Conexão';
+        }
+    }
+
+    function displayQRCode(base64Data) {
+        console.log("Exibindo QR Code");
+        const placeholder = document.getElementById('qr-placeholder');
+        const qrCodeSection = document.getElementById('qr-code');
+        const qrImage = document.getElementById('qr-image');
+
+        let imgSrc = base64Data;
+        if (!base64Data.startsWith('data:image')) {
+            imgSrc = 'data:image/png;base64,' + base64Data;
+        }
+
+        placeholder.style.display = 'none';
+        qrCodeSection.classList.remove('hidden');
+        qrImage.src = imgSrc;
+    }
+
+    async function startPollingForQR() {
+        console.log("Iniciando polling de QR Code...");
+        let attempts = 0;
+        const qrInterval = setInterval(async () => {
+            attempts++;
+            if (attempts > 20) {
+                clearInterval(qrInterval);
+                alert('Timeout ao aguardar QR Code. Tente novamente.');
+                document.getElementById('qr-section').classList.add('hidden');
+                document.getElementById('connect-section').style.display = 'block';
+                document.getElementById('btn-connect').disabled = false;
+                document.getElementById('btn-connect').innerText = 'Iniciar Conexão';
+                return;
+            }
+
+            try {
+                const res = await fetch("{% url 'admin_panel:superadmin_whatsapp_connect' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'get_qr' })
+                });
+                const data = await res.json();
+
+                if (data.success && (data.qr_code || data.qrcode)) {
+                    displayQRCode(data.qr_code || data.qrcode);
+                    clearInterval(qrInterval);
+                }
+            } catch (e) {
+                console.error('Polling QR error:', e);
+            }
+        }, 2000);
+    }
+
+    function startPolling() {
+        // Status polling cada 3s
+        if (window.statusInterval) clearInterval(window.statusInterval);
+        window.statusInterval = setInterval(checkStatus, 3000);
+    }
+
+    async function checkStatus() {
+        try {
+            const response = await fetch("{% url 'admin_panel:superadmin_whatsapp_status' %}");
+            const data = await response.json();
+
+            if (data.connected) {
+                // Conectou! Atualizar UI
+                document.getElementById('qr-section').classList.add('hidden');
+                document.getElementById('connected-section').style.display = 'block';
+                document.getElementById('status-badge').textContent = 'Conectado';
+                document.getElementById('status-badge').className = 'stat-value text-sm text-success';
+
+                if (window.statusInterval) {
+                    clearInterval(window.statusInterval);
+                }
+            }
+        } catch (error) {
+            console.error('Status check error:', error);
+        }
+    }
+
+    async function resetConfig() {
+        if (!confirm('Resetar configuração? Isso irá desconectar e limpar dados locais.')) return;
+
+        try {
+            const response = await fetch("{% url 'admin_panel:superadmin_whatsapp_connect' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'reset' })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Configuração resetada.');
+                location.reload();
+            }
+        } catch (error) {
+            alert('Erro ao resetar: ' + error.message);
+        }
+    }
+
+    async function disconnectWhatsApp() {
+        if (!confirm('Desconectar WhatsApp?')) return;
+
+        try {
+            const response = await fetch("{% url 'admin_panel:superadmin_whatsapp_connect' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'disconnect' })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao desconectar: ' + data.message);
+            }
+        } catch (error) {
+            alert('Erro ao desconectar: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}
