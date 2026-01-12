@@ -202,7 +202,7 @@
                             </td>
                             <td>
                                 {% if item.post %}
-                                <a href="{% url 'automation:posts' %}?tab=posts&search={{ item.post.keyword|urlencode }}" class="btn btn-ghost btn-sm">Ver Post</a>
+                                <a href="{% url 'automation:posts_list' %}?tab=posts&search={{ item.post.keyword|urlencode }}" class="btn btn-ghost btn-sm">Ver Post</a>
                                 {% else %}
                                 <span class="text-muted text-sm">-</span>
                                 {% endif %}
