@@ -316,10 +316,14 @@ class OpenRouterService:
                     
                     # Handle dict response (some models like Gemini return dict)
                     if isinstance(image_data, dict):
-                        if "url" in image_data:
+                        # Handle nested OpenAI format: {'type': 'image_url', 'image_url': {'url': '...'}}
+                        if "image_url" in image_data:
+                            if isinstance(image_data["image_url"], dict) and "url" in image_data["image_url"]:
+                                image_data = image_data["image_url"]["url"]
+                            else:
+                                image_data = image_data["image_url"]
+                        elif "url" in image_data:
                             image_data = image_data["url"]
-                        elif "image_url" in image_data:
-                            image_data = image_data["image_url"]
                         elif "b64_json" in image_data:
                             image_data = f"data:image/png;base64,{image_data['b64_json']}"
                         elif "base64" in image_data:
