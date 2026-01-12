@@ -711,13 +711,29 @@ def run_full_pipeline(
         if generate_image:
             try:
                 image_agent = ImageAgent(openrouter, post)
-                image_url = image_agent.run(post.title)
+                image_result = image_agent.run(post.title)
                 
                 # Save image URL to post
-                if image_url:
-                    post.featured_image_url = image_url
-                    post.save()
-                    logger.info(f"Saved featured image for post {post.id}")
+                if image_result:
+                    final_url = image_result
+                    
+                    # If result is Base64 (starts with data:), upload to Supabase immediately
+                    if image_result.startswith("data:"):
+                        try:
+                            from services.storage import SupabaseStorageService
+                            import uuid
+                            filename = f"{post.id}_{uuid.uuid4().hex[:8]}"
+                            final_url = SupabaseStorageService.upload_base64_image(image_result, filename)
+                            logger.info(f"Uploaded generated base64 image to {final_url}")
+                        except Exception as upload_err:
+                            logger.error(f"Failed to upload base64 image: {upload_err}")
+                            # Don't save base64 if upload fails, to avoid DB crash
+                            final_url = None
+                    
+                    if final_url:
+                        post.featured_image_url = final_url
+                        post.save()
+                        logger.info(f"Saved featured image for post {post.id}")
             except Exception as e:
                 logger.warning(f"Image generation failed for post {post.id}, continuing without image: {e}")
         
