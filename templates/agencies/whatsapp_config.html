@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configurar WhatsApp - {{ agency.name }}{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Configurar WhatsApp</h1>
+        <p class="text-muted">Conecte seu WhatsApp para enviar acessos automaticamente aos clientes</p>
+    </div>
+
+    <div class="grid-responsive-2">
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Status da Conexão</h3>
+            </div>
+            <div class="card-body">
+                <div id="connection-status" class="connection-status-container">
+                    {% if is_connected %}
+                    <div class="status-badge status-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Conectado
+                    </div>
+                    <p class="text-sm text-muted mt-2">WhatsApp conectado e pronto para enviar mensagens.</p>
+                    {% elif is_configured %}
+                    <div class="status-badge status-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Desconectado
+                    </div>
+                    <p class="text-sm text-muted mt-2">Configure clicando em "Conectar WhatsApp".</p>
+                    {% else %}
+                    <div class="status-badge status-inactive">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        Não Configurado
+                    </div>
+                    <p class="text-sm text-muted mt-2">Clique em "Configurar WhatsApp" para começar.</p>
+                    {% endif %}
+                </div>
+
+                <div class="mt-4 flex gap-2 flex-wrap">
+                    {% if not is_configured %}
+                    <button id="setup-btn" class="btn btn-primary">
+                        ⚙️ Configurar WhatsApp
+                    </button>
+                    {% elif not is_connected %}
+                    <button id="connect-btn" class="btn btn-primary">
+                        📱 Conectar WhatsApp
+                    </button>
+                    {% else %}
+                    <button id="disconnect-btn" class="btn btn-secondary">
+                        🔌 Desconectar
+                    </button>
+                    {% endif %}
+
+                    <button id="refresh-btn" class="btn btn-ghost">
+                        🔄 Atualizar Status
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code Card -->
+        <div class="card" id="qr-card" style="{% if not is_configured or is_connected %}display: none;{% endif %}">
+            <div class="card-header">
+                <h3>QR Code</h3>
+            </div>
+            <div class="card-body text-center">
+                <div id="qr-loading" class="py-8" style="display: none;">
+                    <div class="spinner"></div>
+                    <p class="text-muted mt-2">Carregando QR Code...</p>
+                </div>
+
+                <div id="qr-container" class="py-4">
+                    <p class="text-muted">Clique em "Conectar WhatsApp" para gerar o QR Code</p>
+                </div>
+
+                <p class="text-sm text-muted mt-4">
+                    Abra o WhatsApp no seu celular → Configurações → Dispositivos Vinculados → Vincular Dispositivo
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="card mt-6">
+        <div class="card-header">
+            <h3>ℹ️ Como funciona</h3>
+        </div>
+        <div class="card-body">
+            <ol class="list-decimal list-inside space-y-2">
+                <li>Clique em "Configurar WhatsApp" para inicializar a integração</li>
+                <li>Clique em "Conectar WhatsApp" para gerar o QR Code</li>
+                <li>Escaneie o QR Code com seu WhatsApp (Configurações → Dispositivos Vinculados)</li>
+                <li>Pronto! Agora você pode enviar acessos de projetos via WhatsApp</li>
+            </ol>
+
+            <div class="alert alert-info mt-4">
+                💡 <strong>Dica:</strong> Ao criar ou editar um projeto, marque a opção "Enviar acesso via WhatsApp
+                agora" para enviar automaticamente.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disconnect Modal -->
+<div id="disconnect-modal" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Desconectar WhatsApp?</h3>
+            <button class="modal-close" id="close-modal-x">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted">Ao desconectar, o envio automático de mensagens não funcionará até que você reconecte.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-disconnect" class="btn btn-ghost">Cancelar</button>
+            <button id="confirm-disconnect" class="btn btn-error">Desconectar</button>
+        </div>
+    </div>
+</div>
+</div>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const setupBtn = document.getElementById('setup-btn');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const qrCard = document.getElementById('qr-card');
+        const qrLoading = document.getElementById('qr-loading');
+        const qrContainer = document.getElementById('qr-container');
+
+        // Modal Elements
+        const disconnectModal = document.getElementById('disconnect-modal');
+        const cancelDisconnectBtn = document.getElementById('cancel-disconnect');
+        const confirmDisconnectBtn = document.getElementById('confirm-disconnect');
+        const closeModalX = document.getElementById('close-modal-x');
+
+        const csrfToken = '{{ csrf_token }}';
+
+        async function fetchWithCsrf(url, method = 'GET') {
+            const options = {
+                method,
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            };
+            const response = await fetch(url, options);
+            return response.json();
+        }
+
+        // Setup WhatsApp
+        if (setupBtn) {
+            setupBtn.addEventListener('click', async () => {
+                setupBtn.disabled = true;
+                setupBtn.textContent = 'Configurando...';
+
+                try {
+                    const result = await fetchWithCsrf('{% url "whatsapp:setup" %}', 'POST');
+                    if (result.success) {
+                        alert('✅ ' + result.message);
+                        location.reload();
+                    } else {
+                        alert('❌ Erro: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('❌ Erro de conexão');
+                }
+
+                setupBtn.disabled = false;
+                setupBtn.textContent = '⚙️ Configurar WhatsApp';
+            });
+        }
+
+        // Connect WhatsApp
+        if (connectBtn) {
+            connectBtn.addEventListener('click', async () => {
+                connectBtn.disabled = true;
+                qrCard.style.display = 'block';
+                qrLoading.style.display = 'block';
+                qrContainer.innerHTML = '';
+
+                try {
+                    // First, initiate connection
+                    await fetchWithCsrf('{% url "whatsapp:connect" %}', 'POST');
+
+                    // Then get QR code
+                    setTimeout(loadQRCode, 1000);
+                } catch (error) {
+                    alert('❌ Erro ao conectar');
+                }
+
+                connectBtn.disabled = false;
+            });
+        }
+
+        // Load QR Code
+        async function loadQRCode() {
+            try {
+                const result = await fetchWithCsrf('{% url "whatsapp:qr" %}');
+                qrLoading.style.display = 'none';
+
+                if (result.success && result.qr_code) {
+                    qrContainer.innerHTML = `<img src="${result.qr_code}" alt="QR Code" style="max-width: 300px; margin: 0 auto;">`;
+
+                    // Auto-refresh QR code every 40 seconds
+                    setTimeout(loadQRCode, 40000);
+
+                    // Poll for status if not already polling
+                    if (!pollInterval) {
+                        pollStatus();
+                    }
+                } else {
+                    // Start connecting again if QR code expired or unavailable
+                    if (result.message && result.message.includes("not available")) {
+                        qrContainer.innerHTML = '<p class="text-warning">QR Code expirou. Gerando novo...</p>';
+                        // Try to connect again to generate new QR
+                        await fetchWithCsrf('{% url "whatsapp:connect" %}', 'POST');
+                        setTimeout(loadQRCode, 2000);
+                    } else {
+                        qrContainer.innerHTML = '<p class="text-danger">QR Code não disponível. Tente novamente.</p>';
+                    }
+                }
+            } catch (error) {
+                qrLoading.style.display = 'none';
+                qrContainer.innerHTML = '<p class="text-danger">Erro ao carregar QR Code.</p>';
+            }
+        }
+
+        // Poll status
+        let pollInterval;
+        function pollStatus() {
+            pollInterval = setInterval(async () => {
+                try {
+                    const result = await fetchWithCsrf('{% url "whatsapp:status" %}');
+                    if (result.connected) {
+                        clearInterval(pollInterval);
+                        alert('✅ WhatsApp conectado com sucesso!');
+                        location.reload();
+                    }
+                } catch (error) {
+                    // Ignore polling errors
+                }
+            }, 3000);
+        }
+
+        // Disconnect Logic with Modal
+        if (disconnectBtn) {
+            disconnectBtn.addEventListener('click', () => {
+                if (disconnectModal) disconnectModal.classList.add('active');
+            });
+        }
+
+        // Modal Controls
+        function closeModal() {
+            if (disconnectModal) disconnectModal.classList.remove('active');
+        }
+
+        if (cancelDisconnectBtn) {
+            cancelDisconnectBtn.addEventListener('click', closeModal);
+        }
+
+        if (closeModalX) {
+            closeModalX.addEventListener('click', closeModal);
+        }
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && disconnectModal && disconnectModal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        // Close on click outside
+        if (disconnectModal) {
+            disconnectModal.addEventListener('click', (e) => {
+                if (e.target === disconnectModal) {
+                    closeModal();
+                }
+            });
+        }
+
+        if (confirmDisconnectBtn) {
+            confirmDisconnectBtn.addEventListener('click', async () => {
+                confirmDisconnectBtn.disabled = true;
+                confirmDisconnectBtn.textContent = 'Desconectando...';
+
+                try {
+                    const result = await fetchWithCsrf('{% url "whatsapp:disconnect" %}', 'POST');
+                    if (result.success) {
+                        alert('✅ WhatsApp desconectado');
+                        location.reload();
+                    } else {
+                        alert('❌ Erro: ' + result.message);
+                        confirmDisconnectBtn.disabled = false;
+                        confirmDisconnectBtn.textContent = 'Desconectar';
+                    }
+                } catch (error) {
+                    alert('❌ Erro de conexão');
+                    confirmDisconnectBtn.disabled = false;
+                    confirmDisconnectBtn.textContent = 'Desconectar';
+                }
+            });
+        }
+
+        // Refresh status
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => location.reload());
+        }
+
+        // Auto-check status if configured but locally showing disconnected
+        // This handles cases where user connected on phone but page wasn't updated
+        {% if is_configured and not is_connected %}
+        pollStatus();
+        {% endif %}
+    });
+</script>
+{% endblock %}

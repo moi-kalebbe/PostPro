@@ -1,4 +1,11 @@
-{% extends 'base.html' %}
+import os
+
+# Define the absolute path to the settings file
+file_path = r'c:\Users\olx\OneDrive\Desktop\PROJETOS 2026\PostPro\templates\dashboard\settings.html'
+
+# The corrected content for the file
+# Key changes: Added proper spaces around '==' operators in all {% if %} tags
+corrected_content = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Configuracoes - {{ agency_name }}{% endblock %}
@@ -237,3 +244,11 @@
     </div>
 </div>
 {% endblock %}
+"""
+
+try:
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(corrected_content)
+    print("Successfully rewrote settings.html with corrected syntax.")
+except Exception as e:
+    print(f"Error writing file: {e}")

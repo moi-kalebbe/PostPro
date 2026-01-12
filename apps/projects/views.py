@@ -11,6 +11,7 @@ from apps.accounts.decorators import agency_required, project_access_required
 from apps.automation.models import Post, BatchJob
 from .models import Project, RSSFeed
 from .forms import ProjectForm
+from services.wuzapi import WuzapiService
 
 
 @login_required
@@ -63,6 +64,24 @@ def project_create_view(request):
             settings.min_word_count = form.cleaned_data.get('min_word_count', 1200)
             settings.max_word_count = form.cleaned_data.get('max_word_count', 2000)
             settings.save()
+
+            # Handle automated WhatsApp sending
+            if form.cleaned_data.get('send_access_now'):
+                if agency.wuzapi_connected:
+                     if project.client_phone:
+                         try:
+                             service = WuzapiService(agency)
+                             result = service.send_project_access(project)
+                             if result.get('success'):
+                                 messages.success(request, f'WhatsApp enviado para {project.client_phone}!')
+                             else:
+                                 messages.warning(request, f'Falha ao enviar WhatsApp: {result.get("message")}')
+                         except Exception as e:
+                             messages.error(request, f'Erro ao enviar mensagem: {str(e)}')
+                     else:
+                         messages.warning(request, 'WhatsApp não enviado: Telefone do cliente não preenchido.')
+                else:
+                    messages.warning(request, 'WhatsApp não enviado: Conecte seu WhatsApp nas configurações.')
 
             messages.success(request, f'Projeto "{project.name}" criado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
@@ -133,9 +152,25 @@ def project_detail_view(request, project_id):
         'rss_settings': rss_settings,
         'rss_items': rss_items,
         'feeds': feeds,
+        # Default values for the form (logic moved from template)
+        'rss_check_interval': rss_settings.check_interval_minutes if rss_settings else 60,
+        'rss_max_posts': rss_settings.max_posts_per_day if rss_settings else 5,
+        'rss_is_active': rss_settings.is_active if rss_settings else False,
+        'rss_auto_publish': rss_settings.auto_publish if rss_settings else False,
+        'rss_download_images': rss_settings.download_images if rss_settings else True, # Default True
+        'rss_source_attribution': rss_settings.include_source_attribution if rss_settings else True, # Default True
+        # Pre-calculated booleans to avoid comparison operators in template (which are being stripped of spaces)
+        'is_interval_30': (rss_settings.check_interval_minutes if rss_settings else 60) == 30,
+        'is_interval_60': (rss_settings.check_interval_minutes if rss_settings else 60) == 60,
+        'is_interval_120': (rss_settings.check_interval_minutes if rss_settings else 60) == 120,
+        'is_interval_360': (rss_settings.check_interval_minutes if rss_settings else 60) == 360,
+        'is_max_posts_3': (rss_settings.max_posts_per_day if rss_settings else 5) == 3,
+        'is_max_posts_5': (rss_settings.max_posts_per_day if rss_settings else 5) == 5,
+        'is_max_posts_10': (rss_settings.max_posts_per_day if rss_settings else 5) == 10,
+        'is_max_posts_20': (rss_settings.max_posts_per_day if rss_settings else 5) == 20,
     }
     
-    return render(request, 'projects/detail.html', context)
+    return render(request, 'projects/detail_fixed.html', context)
 
 
 
@@ -163,6 +198,25 @@ def project_edit_view(request, project_id):
             settings.max_word_count = form.cleaned_data.get('max_word_count', 2000)
             settings.save()
 
+            # Handle automated WhatsApp sending
+            if form.cleaned_data.get('send_access_now'):
+                agency = project.agency
+                if agency.wuzapi_connected:
+                     if project.client_phone:
+                         try:
+                             service = WuzapiService(agency)
+                             result = service.send_project_access(project)
+                             if result.get('success'):
+                                 messages.success(request, f'WhatsApp enviado para {project.client_phone}!')
+                             else:
+                                 messages.warning(request, f'Falha ao enviar WhatsApp: {result.get("message")}')
+                         except Exception as e:
+                             messages.error(request, f'Erro ao enviar mensagem: {str(e)}')
+                     else:
+                         messages.warning(request, 'WhatsApp não enviado: Telefone do cliente não preenchido.')
+                else:
+                    messages.warning(request, 'WhatsApp não enviado: Conecte seu WhatsApp nas configurações.')
+
             messages.success(request, 'Projeto atualizado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
     else:
@@ -188,6 +242,69 @@ def project_regenerate_key_view(request, project_id):
         messages.success(request, 'License key regenerada. Atualize o plugin WordPress.')
     
     return redirect('projects:detail', project_id=project.id)
+
+
+@login_required
+@project_access_required
+def project_delete_view(request, project_id):
+    """Delete a project and all its related data."""
+    from django.http import JsonResponse
+    from apps.automation.models import Post, BatchJob, EditorialPlan, RSSItem, ActivityLog
+    
+    project = request.project
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+    
+    project_name = project.name
+    agency = project.agency
+    
+    try:
+        # Count related data for logging
+        posts_count = Post.objects.filter(project=project).count()
+        batches_count = BatchJob.objects.filter(project=project).count()
+        plans_count = EditorialPlan.objects.filter(project=project).count()
+        
+        # Log the deletion
+        ActivityLog.objects.create(
+            agency=agency,
+            project=None,  # Will be null after delete
+            actor_user=request.user,
+            action="PROJECT_DELETED",
+            entity_type="Project",
+            entity_id=str(project.id),
+            metadata={
+                "name": project_name,
+                "posts_deleted": posts_count,
+                "batches_deleted": batches_count,
+                "plans_deleted": plans_count,
+            }
+        )
+        
+        # Delete the project (cascades to related models)
+        project.delete()
+        
+        messages.success(request, f'Projeto "{project_name}" excluído com sucesso!')
+        
+        # Check if this is an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'Projeto "{project_name}" excluído',
+                'redirect': '/projects/'
+            })
+        
+        return redirect('projects:list')
+        
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': f'Erro ao excluir: {str(e)}'
+            }, status=500)
+        
+        messages.error(request, f'Erro ao excluir projeto: {str(e)}')
+        return redirect('projects:detail', project_id=project.id)
 
 
 @login_required
@@ -449,3 +566,97 @@ def rss_feed_delete_view(request, project_id, feed_id):
         messages.success(request, 'Feed removido com sucesso.')
         
     return redirect('projects:detail', project_id=project_id)
+
+
+# ============================================================================
+# WhatsApp Access Views
+# ============================================================================
+
+@login_required
+@project_access_required
+def project_send_access_view(request, project_id):
+    """Send or resend project access via WhatsApp."""
+    from django.http import JsonResponse
+    from services.wuzapi import WuzapiService
+    
+    project = request.project
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+    
+    if not project.client_phone:
+        return JsonResponse({
+            'success': False,
+            'message': 'Telefone do cliente não cadastrado'
+        }, status=400)
+    
+    agency = project.agency
+    
+    if not agency.wuzapi_connected:
+        return JsonResponse({
+            'success': False,
+            'message': 'WhatsApp não conectado. Configure em Configurações > WhatsApp.'
+        }, status=400)
+    
+    service = WuzapiService(agency)
+    result = service.send_project_access(project)
+    
+    return JsonResponse(result)
+
+
+# ============================================================================
+# Public Magic Link Views (No Login Required)
+# ============================================================================
+
+def project_setup_view(request, token):
+    """Public magic link page for project setup/download."""
+    from django.conf import settings as django_settings
+    
+    project = get_object_or_404(Project, magic_link_token=token)
+    
+    context = {
+        'project': project,
+        'agency': project.agency,
+        'magic_link': project.get_magic_link_url(),
+        # 'plugin_download_url': getattr(django_settings, 'PLUGIN_DOWNLOAD_URL', ''),
+        'plugin_download_url': '', # Force internal download logic
+    }
+    
+    return render(request, 'projects/setup.html', context)
+
+
+def project_plugin_download_view(request, token):
+    """Download plugin file through magic link."""
+    from django.http import FileResponse, HttpResponse
+    from django.conf import settings as django_settings
+    import os
+    
+    project = get_object_or_404(Project, magic_link_token=token)
+    
+    # Check for plugin file
+    plugin_path = os.path.join(
+        django_settings.MEDIA_ROOT,
+        'plugins',
+        'postpro-plugin.zip'
+    )
+    
+    if not os.path.exists(plugin_path):
+        # Fallback: Check in static files
+        plugin_path = os.path.join(
+            django_settings.STATIC_ROOT or django_settings.BASE_DIR / 'static',
+            'plugins',
+            'postpro-plugin.zip'
+        )
+    
+    if not os.path.exists(plugin_path):
+        return HttpResponse(
+            "Plugin não encontrado. Entre em contato com o suporte.",
+            status=404
+        )
+    
+    return FileResponse(
+        open(plugin_path, 'rb'),
+        as_attachment=True,
+        filename='postpro-plugin.zip'
+    )
+

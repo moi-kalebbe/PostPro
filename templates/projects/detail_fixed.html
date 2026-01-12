@@ -24,6 +24,7 @@
         </div>
         <div class="flex gap-2">
             <a href="{% url 'projects:edit' project.id %}" class="btn btn-secondary">Editar Projeto</a>
+            <button type="button" class="btn btn-error" onclick="confirmDeleteProject()">Excluir Projeto</button>
         </div>
     </div>
 
@@ -99,19 +100,19 @@
                     <div class="form-group">
                         <label class="form-label">Intervalo de Verificação</label>
                         <select name="check_interval_minutes" class="form-input">
-                            <option value="30" {% if rss_settings.check_interval_minutes == 30 %}selected{% endif %}>30 minutos</option>
-                            <option value="60" {% if rss_settings.check_interval_minutes == 60 or not rss_settings %}selected{% endif %}>1 hora</option>
-                            <option value="120" {% if rss_settings.check_interval_minutes == 120 %}selected{% endif %}>2 horas</option>
-                            <option value="360" {% if rss_settings.check_interval_minutes == 360 %}selected{% endif %}>6 horas</option>
+                            <option value="30" {% if is_interval_30 %}selected{% endif %}>30 minutos</option>
+                            <option value="60" {% if is_interval_60 %}selected{% endif %}>1 hora</option>
+                            <option value="120" {% if is_interval_120 %}selected{% endif %}>2 horas</option>
+                            <option value="360" {% if is_interval_360 %}selected{% endif %}>6 horas</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Máximo de Posts/Dia (Total)</label>
                         <select name="max_posts_per_day" class="form-input">
-                            <option value="3" {% if rss_settings.max_posts_per_day == 3 %}selected{% endif %}>3 posts</option>
-                            <option value="5" {% if rss_settings.max_posts_per_day == 5 or not rss_settings %}selected{% endif %}>5 posts</option>
-                            <option value="10" {% if rss_settings.max_posts_per_day == 10 %}selected{% endif %}>10 posts</option>
-                            <option value="20" {% if rss_settings.max_posts_per_day == 20 %}selected{% endif %}>20 posts</option>
+                            <option value="3" {% if is_max_posts_3 %}selected{% endif %}>3 posts</option>
+                            <option value="5" {% if is_max_posts_5 %}selected{% endif %}>5 posts</option>
+                            <option value="10" {% if is_max_posts_10 %}selected{% endif %}>10 posts</option>
+                            <option value="20" {% if is_max_posts_20 %}selected{% endif %}>20 posts</option>
                         </select>
                     </div>
                 </div>
@@ -119,13 +120,13 @@
                 <div class="grid-2 gap-4">
                     <div class="form-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="is_active" class="checkbox" {% if rss_settings.is_active %}checked{% endif %}>
+                            <input type="checkbox" name="is_active" class="checkbox" {% if rss_is_active %}checked{% endif %}>
                             <span>Ativar monitoramento global</span>
                         </label>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="auto_publish" class="checkbox" {% if rss_settings.auto_publish %}checked{% endif %}>
+                            <input type="checkbox" name="auto_publish" class="checkbox" {% if rss_auto_publish %}checked{% endif %}>
                             <span>Publicar automaticamente</span>
                         </label>
                     </div>
@@ -133,14 +134,14 @@
 
                 <div class="form-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="download_images" class="checkbox" {% if rss_settings.download_images or not rss_settings %}checked{% endif %}>
+                        <input type="checkbox" name="download_images" class="checkbox" {% if rss_download_images %}checked{% endif %}>
                         <span>Baixar imagens do feed (recomendado)</span>
                     </label>
                 </div>
 
                 <div class="form-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="include_source_attribution" class="checkbox" {% if rss_settings.include_source_attribution or not rss_settings %}checked{% endif %}>
+                        <input type="checkbox" name="include_source_attribution" class="checkbox" {% if rss_source_attribution %}checked{% endif %}>
                         <span>Incluir atribuição à fonte original</span>
                     </label>
                 </div>
@@ -191,8 +192,7 @@
                                     onsubmit="return confirm('Tem certeza que deseja remover este feed?');"
                                     style="display:inline;">
                                     {% csrf_token %}
-                                    <button type="submit" class="text-error font-bold px-2"
-                                        title="Remover">🗑️</button>
+                                    <button type="submit" class="text-error font-bold px-2" title="Remover">🗑️</button>
                                 </form>
                             </td>
                         </tr>
@@ -204,7 +204,8 @@
             <div class="text-center p-6 border border-dashed rounded bg-gray-50">
                 <p class="text-muted">Nenhum feed RSS configurado ainda.</p>
                 <div class="mt-2">
-                    <button type="button" class="btn btn-ghost" onclick="openRSSFeedModal()">Adicionar o primeiro feed</button>
+                    <button type="button" class="btn btn-primary" onclick="openRSSFeedModal()">Adicionar o primeiro
+                        feed</button>
                 </div>
             </div>
             {% endif %}
@@ -230,7 +231,8 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label class="form-label">URL do Feed (XML)</label>
-                        <input type="url" name="feed_url" class="form-input" required placeholder="https://exemplo.com/feed.xml">
+                        <input type="url" name="feed_url" class="form-input" required
+                            placeholder="https://exemplo.com/feed.xml">
                         <p class="form-help">Certifique-se que é um link direto para o arquivo RSS/XML.</p>
                     </div>
                     <div class="form-group">
@@ -493,10 +495,11 @@
 
 <script>
     // API URLs - built manually to avoid Django template issues with UUID placeholders
-    const PROJECT_ID = '{{ project.id }}';
-    const DELETE_ITEM_URL_BASE = `/projects/${PROJECT_ID}/editorial-item/`;
-    const BULK_DELETE_URL = `/projects/${PROJECT_ID}/editorial-items/bulk-delete/`;
-    const CSRF_TOKEN = '{{ csrf_token }}';
+    // API URLs - var to avoid redeclaration errors
+    var PROJECT_ID = '{{ project.id }}';
+    var DELETE_ITEM_URL_BASE = `/projects/${PROJECT_ID}/editorial-item/`;
+    var BULK_DELETE_URL = `/projects/${PROJECT_ID}/editorial-items/bulk-delete/`;
+    var CSRF_TOKEN = '{{ csrf_token }}';
 
     // Selection State
     let selectedItems = new Set();
@@ -544,9 +547,17 @@
         updateBulkBar();
     }
 
-    function openDeleteModal(message, callback) {
+    window.openDeleteModal = function(message, callback, showCheckbox = true) {
         const modal = document.getElementById('delete-modal');
-        document.getElementById('delete-modal-message').textContent = message;
+        document.getElementById('delete-modal-message').innerHTML = message.replace(/\n/g, '<br>');
+        
+        const checkboxGroup = document.getElementById('delete-from-wp').closest('.form-group');
+        if (showCheckbox) {
+            checkboxGroup.style.display = 'block';
+        } else {
+            checkboxGroup.style.display = 'none';
+        }
+        
         document.getElementById('delete-from-wp').checked = false;
         deleteCallback = callback;
 
@@ -554,7 +565,7 @@
         modal.classList.add('active');
     }
 
-    function closeDeleteModal() {
+    window.closeDeleteModal = function() {
         const modal = document.getElementById('delete-modal');
         modal.classList.remove('active');
         deleteCallback = null;
@@ -568,12 +579,13 @@
         closeDeleteModal();
     });
 
-    function confirmDeleteItem(itemId, title) {
+    window.confirmDeleteItem = function(itemId, title) {
         openDeleteModal(
-            `Tem certeza que deseja excluir "${title}"?`,
+            `Tem certeza que deseja excluir "<strong>${title}</strong>"?`,
             function (deleteFromWp) {
                 deleteItem(itemId, deleteFromWp);
-            }
+            },
+            true
         );
     }
 
@@ -652,6 +664,30 @@
         }
 
         const deleteUrl = `/projects/${PROJECT_ID}/editorial-items/delete-all/`;
+        // Implement delete all logic if needed or redirect
+    }
+
+    // Project Deletion
+    var PROJECT_DELETE_URL = `/projects/${PROJECT_ID}/delete/`;
+
+    window.confirmDeleteProject = function() {
+        const warningMsg = '⚠️ <strong>PERIGO:</strong> Tem certeza que deseja excluir este projeto?\n\nIsso apagará PERMANENTEMENTE:\n- Todos os posts gerados\n- Histórico e estatísticas\n- Configurações e feeds\n\nEsta ação NÃO pode ser desfeita.';
+        
+        openDeleteModal(warningMsg, function() {
+            // Create form for POST request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = PROJECT_DELETE_URL;
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = CSRF_TOKEN;
+            form.appendChild(csrfInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }, false);
     }
 </script>
 {% endblock %}

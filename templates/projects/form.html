@@ -9,51 +9,209 @@
 
 {% block content %}
 <style>
-    .pp-container { max-width: 1200px; margin: 0 auto; padding: 24px; font-family: 'Inter', sans-serif; }
-    .pp-header { margin-bottom: 24px; }
-    .pp-title { font-size: 28px; font-weight: 700; color: var(--text-primary); }
-    .pp-card { background: var(--bg-card); border-radius: 16px; box-shadow: var(--shadow-sm); padding: 32px; border: 1px solid var(--border-color); }
-    .pp-section-title { font-size: 18px; font-weight: 600; color: var(--text-primary); padding-bottom: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); }
-    .pp-grid { display: grid; grid-template-columns: 1fr; gap: 40px; }
-    @media (min-width: 992px) { .pp-grid { grid-template-columns: 1fr 1fr; } }
-    
-    .pp-form-group { margin-bottom: 24px; width: 100%; }
-    .pp-label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
-    .pp-input, .pp-select, .pp-textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; box-sizing: border-box; background: var(--bg-card); color: var(--text-primary); }
-    .pp-textarea { min-height: 100px; resize: vertical; }
-    .pp-input:focus, .pp-select:focus, .pp-textarea:focus { border-color: var(--color-primary); outline: 3px solid var(--color-primary-light); }
-    .pp-help { font-size: 13px; color: var(--text-muted); margin-top: 6px; display: block; }
-    
-    .pp-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    
-    .pp-checkbox-wrapper { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: 0.2s; }
-    .pp-checkbox-wrapper:hover { background-color: var(--bg-secondary); border-color: var(--border-color); }
-    .pp-checkbox { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
-    .pp-checkbox-label { font-size: 14px; font-weight: 500; color: var(--text-primary); cursor: pointer; }
-    
-    .pp-actions { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px; align-items: flex-end; }
-    @media (min-width: 640px) { .pp-actions { flex-direction: row; justify-content: flex-end; } }
-    
-    .pp-btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-    .pp-btn-primary { background-color: var(--color-primary); color: white; border: none; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2); }
-    .pp-btn-primary:hover { background-color: var(--color-primary-dark); transform: translateY(-1px); }
-    .pp-btn-secondary { background-color: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); }
-    .pp-btn-secondary:hover { background-color: var(--bg-secondary); border-color: var(--text-muted); }
-    
+    .pp-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .pp-header {
+        margin-bottom: 24px;
+    }
+
+    .pp-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .pp-card {
+        background: var(--bg-card);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+        border: 1px solid var(--border-color);
+    }
+
+    .pp-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        padding-bottom: 12px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .pp-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    @media (min-width: 992px) {
+        .pp-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .pp-form-group {
+        margin-bottom: 24px;
+        width: 100%;
+    }
+
+    .pp-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .pp-input,
+    .pp-select,
+    .pp-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.2s;
+        box-sizing: border-box;
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
+
+    .pp-textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .pp-input:focus,
+    .pp-select:focus,
+    .pp-textarea:focus {
+        border-color: var(--color-primary);
+        outline: 3px solid var(--color-primary-light);
+    }
+
+    .pp-help {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 6px;
+        display: block;
+    }
+
+    .pp-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .pp-checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .pp-checkbox-wrapper:hover {
+        background-color: var(--bg-secondary);
+        border-color: var(--border-color);
+    }
+
+    .pp-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--color-primary);
+        cursor: pointer;
+    }
+
+    .pp-checkbox-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .pp-actions {
+        margin-top: 40px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .pp-actions {
+            flex-direction: row;
+            justify-content: flex-end;
+        }
+    }
+
+    .pp-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 28px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .pp-btn-primary {
+        background-color: var(--color-primary);
+        color: white;
+        border: none;
+        box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+    }
+
+    .pp-btn-primary:hover {
+        background-color: var(--color-primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .pp-btn-secondary {
+        background-color: var(--bg-card);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .pp-btn-secondary:hover {
+        background-color: var(--bg-secondary);
+        border-color: var(--text-muted);
+    }
+
     /* Dark mode adjustments for specific elements if needed, though variables should handle most */
-    option { background: var(--bg-card); color: var(--text-primary); }
+    option {
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
 
     /* Theme-aware variants */
-    .pp-card-danger { 
-        margin-top: 32px; 
-        background: var(--bg-card); 
-        border: 1px solid var(--color-error); 
+    .pp-card-danger {
+        margin-top: 32px;
+        background: var(--bg-card);
+        border: 1px solid var(--color-error);
     }
+
     .pp-card-danger .pp-section-title {
         color: var(--color-error);
         border-bottom-color: var(--color-error-light);
     }
-    .pp-danger-text { color: var(--color-error); }
+
+    .pp-danger-text {
+        color: var(--color-error);
+    }
+
     .pp-danger-box {
         background: var(--bg-secondary);
         border: 1px solid var(--color-error-light);
@@ -63,21 +221,24 @@
         font-family: monospace;
         font-weight: 600;
     }
-    
+
     .pp-checkbox-wrapper-success {
         margin-top: 20px;
         background-color: var(--color-success-light);
         border: 1px solid var(--color-success);
     }
+
     .pp-checkbox-wrapper-success .pp-checkbox-label {
         font-weight: 700;
         color: var(--color-success);
     }
+
     .pp-btn-danger-outline {
         background: transparent;
         color: var(--color-error);
         border: 1px solid var(--color-error);
     }
+
     .pp-btn-danger-outline:hover {
         background: var(--color-error-light);
     }
@@ -92,22 +253,22 @@
         {% csrf_token %}
         <div class="pp-card">
             <div class="pp-grid">
-                
+
                 <!-- COLUNA ESQUERDA: Básico + Conteúdo -->
                 <div>
                     <!-- 1. Informações Básicas -->
                     <h3 class="pp-section-title">Informações Básicas</h3>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Nome do Projeto *</label>
                         {{ form.name }}
                     </div>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">URL do WordPress *</label>
                         {{ form.wordpress_url }}
                     </div>
-                    
+
                     <div class="pp-row-2">
                         <div class="pp-form-group">
                             <label class="pp-label">Usuário WP</label>
@@ -119,9 +280,34 @@
                         </div>
                     </div>
 
+                    <!-- 1.1 Contato do Cliente (WhatsApp) -->
+                    <h3 class="pp-section-title" style="margin-top: 32px;">Contato do Cliente</h3>
+
+                    <div class="pp-row-2">
+                        <div class="pp-form-group">
+                            <label class="pp-label">Nome do Cliente</label>
+                            {{ form.client_name }}
+                        </div>
+                        <div class="pp-form-group">
+                            <label class="pp-label">WhatsApp (com DDD)</label>
+                            {{ form.client_phone }}
+                            <span class="pp-help">Ex: (11) 99999-9999</span>
+                        </div>
+                    </div>
+
+                    <div class="pp-form-group">
+                        <label class="pp-label">Email (Opcional)</label>
+                        {{ form.client_email }}
+                    </div>
+
+                    <label class="pp-checkbox-wrapper pp-checkbox-wrapper-success">
+                        {{ form.send_access_now }}
+                        <span class="pp-checkbox-label">Enviar acesso via WhatsApp agora</span>
+                    </label>
+
                     <!-- 2. Estrutura do Conteúdo -->
                     <h3 class="pp-section-title" style="margin-top: 32px;">Estrutura do Conteúdo</h3>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Idioma</label>
                         {{ form.language }}
@@ -137,7 +323,7 @@
                             {{ form.max_word_count }}
                         </div>
                     </div>
-                    
+
                     <div class="pp-row-2">
                         <div class="pp-form-group">
                             <label class="pp-label">Min Seções H2</label>
@@ -164,7 +350,7 @@
                 <div>
                     <!-- 3. Elementos Opcionais -->
                     <h3 class="pp-section-title">Elementos do Artigo</h3>
-                    
+
                     <div class="pp-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
                         <label class="pp-checkbox-wrapper">
                             {{ form.include_introduction }}
@@ -186,12 +372,12 @@
 
                     <!-- 4. Inteligência Artificial -->
                     <h3 class="pp-section-title" style="margin-top: 32px;">Inteligência Artificial</h3>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Modelo de Texto</label>
                         {{ form.text_model }}
                     </div>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Modelo de Imagem</label>
                         {{ form.image_model }}
@@ -207,7 +393,7 @@
                             {{ form.research_depth }}
                         </div>
                     </div>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Recência (Dias)</label>
                         {{ form.research_recency_days }}
@@ -216,22 +402,22 @@
 
                     <!-- 5. Instruções Personalizadas -->
                     <h3 class="pp-section-title" style="margin-top: 32px;">Personalização Avançada</h3>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Estilo de Escrita Extra</label>
                         {{ form.custom_writing_style }}
                     </div>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Instruções Gerais</label>
                         {{ form.custom_instructions }}
                     </div>
-                    
+
                     <div class="pp-form-group">
                         <label class="pp-label">Tópicos a Evitar</label>
                         {{ form.avoid_topics }}
                     </div>
-                    
+
                     <label class="pp-checkbox-wrapper pp-checkbox-wrapper-success">
                         {{ form.is_active }}
                         <span class="pp-checkbox-label">Projeto Ativo</span>
@@ -240,21 +426,26 @@
             </div>
 
             <div class="pp-actions">
-                <a href="{% if is_edit %}{% url 'projects:detail' project.id %}{% else %}{% url 'projects:list' %}{% endif %}" class="pp-btn pp-btn-secondary">Cancelar</a>
-                <button type="submit" class="pp-btn pp-btn-primary">{% if is_edit %}Salvar Alterações{% else %}Criar Projeto{% endif %}</button>
+                <a href="{% if is_edit %}{% url 'projects:detail' project.id %}{% else %}{% url 'projects:list' %}{% endif %}"
+                    class="pp-btn pp-btn-secondary">Cancelar</a>
+                <button type="submit" class="pp-btn pp-btn-primary">{% if is_edit %}Salvar Alterações{% else %}Criar
+                    Projeto{% endif %}</button>
             </div>
         </div>
     </form>
-    
+
     {% if is_edit %}
     <div class="pp-card pp-card-danger">
         <h3 class="pp-section-title">Zona de Perigo / Licença</h3>
-        <p style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">Chave atual para o plugin WordPress:</p>
+        <p style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">Chave atual para o plugin
+            WordPress:</p>
         <div class="pp-danger-box">{{ project.license_key }}</div>
-        
+
         <form method="post" action="{% url 'projects:regenerate_key' project.id %}" style="margin-top: 16px;">
             {% csrf_token %}
-            <button type="submit" class="pp-btn pp-btn-danger-outline" onclick="return confirm('ATENÇÃO: Isso irá desconectar o plugin no seu site WordPress. Deseja continuar?')">Regenerar Chave de Licença</button>
+            <button type="submit" class="pp-btn pp-btn-danger-outline"
+                onclick="return confirm('ATENÇÃO: Isso irá desconectar o plugin no seu site WordPress. Deseja continuar?')">Regenerar
+                Chave de Licença</button>
         </form>
     </div>
     {% endif %}

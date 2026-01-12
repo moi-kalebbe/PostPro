@@ -4,131 +4,74 @@ description: Regras críticas para templates Django neste projeto
 
 # Django Template Syntax Rules - PostPro
 
-## ⚠️ REGRA CRÍTICA: Espaços em Operadores
+> [!CAUTION]
+> **REGRA DE OURO**: A sintaxe do Django Template Language (DTL) é sensível a espaços em algumas versões e configurações. Siga estas regras estritamente para evitar falhas em produção.
 
-No Django 5.x, **SEMPRE adicione espaços** ao redor de operadores de comparação em template tags:
+## 1. Operadores de Comparação (CRÍTICO)
 
-### ❌ ERRADO (causa TemplateSyntaxError):
+No Django, você **DEVE** adicionar espaços ao redor de operadores de comparação (`==`, `!=`, `<`, `>`, `<=`, `>=`). A falta de espaço causa o erro `TemplateSyntaxError: Could not parse the remainder`.
+
+### ❌ JAMAIS FAÇA ISSO:
 ```django
-{% if project_filter==project.id %}
-{% if status_filter==value %}
-{% if post.status=='published' %}
+{% if settings.value==30 %}          <!-- ERRO: Sem espaço -->
+{% if post.status=='published' %}    <!-- ERRO: Sem espaço -->
+{% if count>=10 %}                   <!-- ERRO: Sem espaço -->
 ```
+
+### ✅ SEMPRE FAÇA ISSO:
+```django
+{% if settings.value == 30 %}        <!-- CORRETO -->
+{% if post.status == 'published' %}  <!-- CORRETO -->
+{% if count >= 10 %}                 <!-- CORRETO -->
+```
+
+---
+
+## 2. Tags Multi-linha (CRÍTICO)
+
+Não quebre a tag de fechamento `endif` ou `endblock` em uma linha isolada se ela fizer parte de uma tag HTML aberta, a menos que você saiba exatamente o que está fazendo. Editores automáticos e formatadores podem quebrar isso incorretamente.
+
+### ❌ ERRADO:
+```django
+<option value="1" {% if value == 1 %}selected{%
+endif %}>Opção</option>
+```
+Isso gera `Invalid block tag ... expected 'endif'`.
 
 ### ✅ CORRETO:
+Mantenha a lógica condicional simples em uma linha quando possível:
 ```django
-{% if project_filter == project.id %}
-{% if status_filter == value %}
-{% if post.status == 'published' %}
+<option value="1" {% if value == 1 %}selected{% endif %}>Opção</option>
 ```
-
-## Outros cuidados:
-
-1. **Filtros com comparação**: Use `|stringformat:'s'` para converter UUIDs para string
-   ```django
-   {% if project_filter == project.id|stringformat:'s' %}
-   ```
-
-⚠️ **REGRA CRÍTICA: Tags Multi-linha**
-    **NUNCA quebre a tag de fechamento em nova linha separada do conteúdo da tag anterior se não houver fechamento de bloco explícito.**
-    
-    ### ❌ ERRADO (Gera `Invalid block tag ... expected 'endif'`):
-    ```django
-    <option value="..." {% if condition %}selected{%
-    endif %}>Opção</option>
-    ```
-
-    ### ✅ CORRETO:
-    ```django
-    <option value="..." {% if condition %}selected{% endif %}>Opção</option>
-    ```
-
-3. **Operadores suportados**: `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`, `in`, `not in`
-
-## Checklist antes de editar templates:
-- [ ] Verificar espaços ao redor de `==` e outros operadores
-- [ ] Validar sintaxe localmente antes de testar no browser
-- [ ] Não confundir syntax JavaScript com Django template tags
-
-## Comando de Verificação (Grep)
-Para evitar este erro recorrente, execute este comando antes de finalizar:
-```bash
-grep -r "{% if .*[^ ]==.* %}" templates/
-grep -r "{% if .*==[^ ].* %}" templates/
-```
-Se encontrar resultados, ADICIONE ESPAÇOS.
 
 ---
 
-## 🔧 Como Corrigir Templates Corrompidos
+## 3. Comandos de Verificação
 
-### Problema: Ferramentas de edição (VS Code, PowerShell) corrompem a sintaxe
+Se você suspeitar de erros de sintaxe, use estes comandos (PowerShell) para varrer os templates:
 
-**Sintomas:**
-- `TemplateSyntaxError: Invalid block tag on line X: 'endif', expected 'endblock'`
-- `TemplateSyntaxError: Could not parse the remainder: '==value' from 'form.field.value==value'`
-- Caracteres estranhos no lugar de acentos (problema de encoding)
+```powershell
+# Encontrar falta de espaço antes de ==
+Get-ChildItem -Recurse -Filter *.html | Select-String -Pattern "{% if .*[^ ]==.* %}"
 
-### ✅ Solução: Usar script Python para reescrever o arquivo
+# Encontrar falta de espaço depois de ==
+Get-ChildItem -Recurse -Filter *.html | Select-String -Pattern "{% if .*==[^ ].* %}"
+```
 
-O método mais seguro é criar um script Python que escreva o template corretamente:
+Se encontrar, corrija imediatamente.
 
+---
+
+## 4. Scripts de Correção Automática
+
+Se um arquivo estiver muito corrompido, prefira reescrevê-lo via script Python para garantir encoding correto (UTF-8) e sintaxe limpa, em vez de tentar editar manualmente se o seu editor estiver configurado incorretamente.
+
+Exemplo de script de correção:
 ```python
-# scripts/fix_template.py
-content = '''{% extends 'base.html' %}
-{% load static %}
-
-{% block content %}
-<select name="field" class="form-select">
-    {% for value, label in form.fields.field.choices %}
-    <option value="{{ value }}"{% if form.field.value == value %} selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-</select>
-{% endblock %}
-'''
-
-with open('templates/path/to/template.html', 'w', encoding='utf-8') as f:
-    f.write(content)
-print('OK')
+# scripts/fix_broken_template.py
+with open('templates/caminho/arquivo.html', 'w', encoding='utf-8') as f:
+    f.write('''{% extends 'base.html' %}
+<!-- Cole o conteúdo correto aqui -->
+{% if value == 10 %}...{% endif %}
+''')
 ```
-
-Depois execute:
-```bash
-python scripts/fix_template.py
-```
-
-### ⚠️ NUNCA usar PowerShell para editar templates Django
-
-O PowerShell pode:
-- Quebrar encoding UTF-8
-- Adicionar BOM indesejado
-- Corromper caracteres especiais
-
-### Padrão correto para `<option>` com selected:
-
-```django
-<option value="{{ value }}"{% if form.field.value == value %} selected{% endif %}>{{ label }}</option>
-```
-
-**Regras:**
-1. SEM espaço entre `"{{ value }}"` e `{% if`
-2. COM espaço ao redor de `==`
-3. TUDO em uma única linha
-4. Espaço antes de `selected`
-
-### Padrão correto para checkbox com checked:
-
-```django
-<input type="checkbox" name="field" class="checkbox"{% if form.field.value %} checked{% endif %}>
-```
-
----
-
-## Scripts de correção disponíveis
-
-Este projeto possui scripts prontos para corrigir templates:
-
-- `scripts/fix_settings.py` - Regenera `templates/dashboard/settings.html`
-- `scripts/fix_form.py` - Regenera `templates/projects/form.html`
-
-Para usar: `python scripts/fix_settings.py`

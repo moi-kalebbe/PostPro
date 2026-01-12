@@ -4,6 +4,7 @@ Project forms.
 
 from django import forms
 from .models import Project, ProjectContentSettings
+from services.wuzapi import WuzapiService
 
 
 # ============================================================================
@@ -57,6 +58,50 @@ RESEARCH_MODEL_CHOICES = [
 
 class ProjectForm(forms.ModelForm):
     """Project create/edit form."""
+    
+    # ============================================================================
+    # Client Contact Fields
+    # ============================================================================
+    
+    client_name = forms.CharField(
+        required=False,
+        label='Nome do Cliente',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'João Silva'
+        })
+    )
+    
+    client_email = forms.EmailField(
+        required=False,
+        label='Email do Cliente',
+        widget=forms.EmailInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'joao@exemplo.com'
+        })
+    )
+    
+    client_phone = forms.CharField(
+        required=False,
+        label='WhatsApp do Cliente',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': '(19) 99999-9999'
+        }),
+        help_text='Formato: (DD) 9XXXX-XXXX'
+    )
+    
+    send_access_now = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Enviar acesso via WhatsApp agora',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        help_text='Envia automáticamente para o cliente após salvar'
+    )
+    
+    # ============================================================================
+    # WordPress Fields
+    # ============================================================================
     
     wordpress_password = forms.CharField(
         required=False,
@@ -139,6 +184,7 @@ class ProjectForm(forms.ModelForm):
         model = Project
         fields = [
             'name', 'wordpress_url', 'wordpress_username',
+            'client_name', 'client_email', 'client_phone',
             'text_model', 'image_model', 'research_model',
             'tone', 'image_style', 'is_active'
         ]
@@ -201,6 +247,19 @@ class ProjectForm(forms.ModelForm):
     def clean_wordpress_url(self):
         url = self.cleaned_data.get('wordpress_url', '')
         return url.rstrip('/')
+    
+    def clean_client_phone(self):
+        """Valida e formata telefone do cliente."""
+        phone = self.cleaned_data.get('client_phone', '')
+        
+        if phone:
+            if not WuzapiService.validate_phone(phone):
+                raise forms.ValidationError(
+                    'Número inválido. Use: (DD) 9XXXX-XXXX'
+                )
+            return WuzapiService.format_phone(phone)
+        
+        return phone
 
     def clean_text_model(self):
         """Valida se o modelo de texto existe no OpenRouter."""

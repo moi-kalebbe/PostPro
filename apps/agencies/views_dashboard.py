@@ -157,6 +157,8 @@ def settings_view(request):
         'agency': agency,
         'has_api_key': has_api_key,
         'team_members': agency.members.all(),
+        'is_configured': bool(agency.wuzapi_token),
+        'is_connected': agency.wuzapi_connected,
     }
     
     return render(request, 'dashboard/settings.html', context)

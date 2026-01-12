@@ -18,6 +18,9 @@ urlpatterns = [
     # Dashboard (Agency Panel)
     path('dashboard/', include('apps.agencies.urls_dashboard')),
     
+    # WhatsApp Configuration
+    path('dashboard/whatsapp/', include('apps.agencies.urls_whatsapp')),
+    
     # Admin Panel (Super Admin)
     path('admin/', include('apps.agencies.urls_admin')),
     

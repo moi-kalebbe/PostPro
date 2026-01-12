@@ -66,6 +66,41 @@ class Project(models.Model):
     total_posts_generated = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     
+    # ===== CLIENT CONTACT FIELDS =====
+    client_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nome do responsável pelo projeto"
+    )
+    client_email = models.EmailField(
+        blank=True,
+        help_text="Email do cliente (opcional)"
+    )
+    client_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="WhatsApp do cliente (ex: 5519999999999)"
+    )
+    
+    # Magic Link Access
+    magic_link_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text="Token para acesso público"
+    )
+    
+    # WhatsApp Access Tracking
+    access_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Último envio via WhatsApp"
+    )
+    access_sent_count = models.IntegerField(
+        default=0,
+        help_text="Quantidade de envios"
+    )
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -123,6 +158,12 @@ class Project(models.Model):
         """Increment post counter."""
         self.total_posts_generated += count
         self.save(update_fields=['total_posts_generated'])
+    
+    def get_magic_link_url(self) -> str:
+        """Get the public magic link URL for this project."""
+        from django.conf import settings as django_settings
+        base_url = getattr(django_settings, 'SITE_URL', 'http://localhost:8000').rstrip('/')
+        return f"{base_url}/projects/setup/{self.magic_link_token}/"
     
     @property
     def content_settings(self):

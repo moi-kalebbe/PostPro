@@ -153,6 +153,9 @@ STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')
 SITE_URL = env('SITE_URL', default='http://localhost:8000')
 PLUGIN_DOWNLOAD_URL = env('PLUGIN_DOWNLOAD_URL', default='')
 
+# Wuzapi (WhatsApp)
+WUZAPI_ADMIN_TOKEN = env('WUZAPI_ADMIN_TOKEN', default='')
+
 # Login URLs
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'

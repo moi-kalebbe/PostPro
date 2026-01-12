@@ -147,6 +147,37 @@ class Agency(models.Model):
         help_text="Cor secundária em HEX"
     )
     
+    # ===== WHATSAPP/WUZAPI FIELDS =====
+    wuzapi_instance_url = models.URLField(
+        default="https://wuzapi.nuvemchat.com",
+        help_text="URL da instância Wuzapi"
+    )
+    wuzapi_user_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="ID do usuário na Wuzapi"
+    )
+    wuzapi_token = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Token de autenticação"
+    )
+    wuzapi_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Número WhatsApp conectado"
+    )
+    wuzapi_connected = models.BooleanField(
+        default=False,
+        help_text="Status da conexão"
+    )
+    wuzapi_connected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Data/hora da última conexão"
+    )
+    
     # Meta
     branding_updated_at = models.DateTimeField(auto_now=True)
     
