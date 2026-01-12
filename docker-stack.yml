@@ -37,6 +37,9 @@ services:
 
       ## 🌍 Timezone
       - TZ=America/Sao_Paulo
+      
+      ## 📱 Wuzapi (WhatsApp)
+      - WUZAPI_ADMIN_TOKEN=ca190e9b7a558e7cec2cea01bd88b99c
 
     deploy:
       mode: replicated
@@ -105,6 +108,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://postpro_redis:6379/0
       - ENCRYPTION_KEY=6EeY6lQX3tDtH64kPw9zNmB2xR5vK8jL0qS1uT4yWaE=
       - TZ=America/Sao_Paulo
+      - WUZAPI_ADMIN_TOKEN=ca190e9b7a558e7cec2cea01bd88b99c
 
     deploy:
       mode: replicated
