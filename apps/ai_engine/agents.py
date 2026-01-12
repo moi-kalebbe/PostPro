@@ -26,9 +26,25 @@ from apps.automation.models import Post, PostArtifact
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# Fallback Configuration (Priority Waterfall)
+# ============================================================================
+# Attempts to use these models in order if the primary model fails.
+FALLBACK_TEXT_MODELS = [
+    "openai/gpt-4o",                 # Premium Standard
+    "anthropic/claude-3.5-sonnet",   # High Intelligence
+    "deepseek/deepseek-r1",          # Strong Reasoning (User requested)
+    "openai/gpt-4o-mini",            # Reliable/Fast Backup
+]
+
+FALLBACK_IMAGE_MODELS = [
+    "black-forest-labs/flux-1.1-pro", # High Quality
+    "google/gemini-2.0-flash-exp",    # Modern/Fast
+    "pollinations/flux",              # Free/Robust Fallback
+]
 
 class BaseAgent:
-    """Base class for AI agents."""
+    """Base class for AI agents with fallback support."""
     
     def __init__(self, openrouter: OpenRouterService, post: Post):
         self.openrouter = openrouter
@@ -36,6 +52,44 @@ class BaseAgent:
         self.project = post.project
         self._site_profile = None
         self._content_settings = None
+    
+    def _run_with_fallback(self, operation_name: str, func, **kwargs) -> any:
+        """
+        Execute a function with automatic model fallback.
+        
+        Args:
+            operation_name: Name for logging (e.g. "Strategy Generation")
+            func: The function to call (e.g. self.openrouter.completion)
+            **kwargs: Arguments for the function. 'model' must be in kwargs.
+        """
+        primary_model = kwargs.get('model')
+        
+        # 1. Try Primary Model
+        try:
+            return func(**kwargs)
+        except Exception as e:
+            logger.warning(f"{operation_name} failed with primary model {primary_model}: {e}. Starting fallback chain.")
+            
+            # Determine which fallback list to use
+            is_image = "generate_image" in func.__name__ or "image" in operation_name.lower()
+            fallback_list = FALLBACK_IMAGE_MODELS if is_image else FALLBACK_TEXT_MODELS
+            
+            # 2. Iterate Fallbacks
+            for fallback_model in fallback_list:
+                if fallback_model == primary_model:
+                    continue # Skip if it was the primary one
+                    
+                logger.info(f"Retrying {operation_name} with fallback model: {fallback_model}")
+                kwargs['model'] = fallback_model
+                try:
+                    return func(**kwargs)
+                except Exception as fallback_error:
+                    logger.warning(f"Fallback model {fallback_model} failed: {fallback_error}")
+                    continue
+            
+            # 3. If all fail, raise the last error
+            logger.error(f"All models failed for {operation_name}")
+            raise e
     
     @property
     def content_settings(self):
@@ -186,7 +240,10 @@ Ensure the output is strictly valid JSON."""
         ]
         
         try:
-            parsed, result = self.openrouter.generate_with_schema(
+            # Wrap API call with fallback
+            parsed, result = self._run_with_fallback(
+                "Research Generation",
+                self.openrouter.generate_with_schema,
                 messages=messages,
                 schema_class=ResearchSchema,
                 model=research_model,
@@ -278,7 +335,10 @@ All content must be written in {self.language}."""
         ]
         
         try:
-            parsed, result = self.openrouter.generate_with_schema(
+            # Wrap API call with fallback
+            parsed, result = self._run_with_fallback(
+                "Strategy Generation",
+                self.openrouter.generate_with_schema,
                 messages=messages,
                 schema_class=StrategySchema,
                 model=self.project.get_text_model(),
@@ -414,7 +474,10 @@ Write the article in clean HTML format."""
             {"role": "user", "content": input_prompt},
         ]
         
-        result = self.openrouter.generate_text(
+        # Wrap API call with fallback
+        result = self._run_with_fallback(
+            "Article Generation",
+            self.openrouter.generate_text,
             messages=messages,
             model=self.project.get_text_model(),
             max_tokens=8192,
@@ -522,70 +585,96 @@ Requirements:
         
         image_model = self.project.get_image_model()
         
+        # Fallback Logic Implementation
+        model_used = image_model
+        cost = Decimal("0.0")
+        image_data_url = None
+
         try:
-            # Choose provider based on model
+            # 1. Pollinations Primary Handling
             if self._is_pollinations_model(image_model):
-                # Use Pollinations for pollinations/* models
-                pollinations_model = self._get_pollinations_model_name(image_model)
-                logger.info(f"Using Pollinations for image generation with model: {pollinations_model}")
-                
-                pollinations = PollinationsService()
-                result = pollinations.generate_image(
-                    prompt=prompt,
-                    model=pollinations_model,
-                    width=1920,
-                    height=1080,
-                    nologo=True,
-                    enhance=True,
-                )
-                
-                image_data_url = result.image_data_url
-                model_used = image_model
-                cost = result.cost
-            else:
-                # Use OpenRouter for openai/* models (DALL-E 3, etc.)
-                logger.info(f"Using OpenRouter for image generation with model: {image_model}")
-                
-                result = self.openrouter.generate_image(
-                    prompt=prompt,
-                    model=image_model,
-                )
-                
-                image_data_url = result.image_data_url
-                model_used = result.model
-                cost = result.cost
+                try:
+                    pollinations_model = self._get_pollinations_model_name(image_model)
+                    logger.info(f"Using Pollinations (primary): {pollinations_model}")
+                    
+                    pollinations = PollinationsService()
+                    result = pollinations.generate_image(
+                        prompt=prompt,
+                        model=pollinations_model,
+                        width=1920, height=1080, nologo=True, enhance=True
+                    )
+                    
+                    # Direct return for Pollinations success
+                    self._save_image_artifact(prompt, image_model, result.cost, result)
+                    self._update_post_image(result.cost)
+                    return result.image_url if hasattr(result, 'image_url') else result.image_data_url
+                    
+                except Exception as p_error:
+                    logger.warning(f"Pollinations primary model {image_model} failed: {p_error}. Switching to OpenRouter fallback.")
+                    # Switch to first OpenRouter fallback
+                    image_model = FALLBACK_IMAGE_MODELS[0]
+
+            # 2. OpenRouter Handling (Primary OR Fallback from Pollinations)
+            logger.info(f"Using OpenRouter (or fallback): {image_model}")
             
-            # Save artifact
-            PostArtifact.objects.create(
-                post=self.post,
-                step=PostArtifact.Step.IMAGE,
-                input_prompt=prompt,
-                system_prompt="Image generation",
-                model_used=model_used,
-                provider_response={"truncated": True},  # Don't store full base64
-                parsed_output={"image_generated": True, "provider": "pollinations" if self._is_pollinations_model(image_model) else "openrouter"},
-                cost=cost,
-                is_active=True,
-            ).deactivate_previous()
+            result = self._run_with_fallback(
+                "Image Generation",
+                self.openrouter.generate_image,
+                prompt=prompt,
+                model=image_model,
+            )
             
-            # Update post
-            self.post.image_generation_cost += cost
-            self.post.step_state["image"] = "completed"
-            self.post.save()
+            image_data_url = result.image_data_url
+            model_used = result.model
+            cost = result.cost
             
-            # Return appropriate URL
-            if self._is_pollinations_model(image_model) and hasattr(result, 'image_url') and result.image_url:
-                # For Pollinations, use the persistent remote URL
-                return result.image_url
+            self._save_image_artifact(prompt, model_used, cost, result)
+            self._update_post_image(cost)
             
-            # For others, return the data URL (base64)
             return image_data_url
-            
-        except (PollinationsError, Exception) as e:
+
+        except Exception as e:
+            # 3. Ultimate Safety Net: Pollinations Flux (Free)
+            # Only try if we generally trust Pollinations and haven't exhausted it exclusively
+            if not self._is_pollinations_model(image_model):
+                 try:
+                     logger.warning(f"All standard image methods failed. Attempting Pollinations/Flux fallback as last resort. Error was: {e}")
+                     pollinations = PollinationsService()
+                     result = pollinations.generate_image(prompt=prompt, model="flux", width=1920, height=1080, nologo=True, enhance=True)
+                     
+                     self._save_image_artifact(prompt, "pollinations/flux-fallback", result.cost, result)
+                     self._update_post_image(result.cost)
+                     return result.image_url
+                 except:
+                     pass
+
             self.post.step_state["image"] = "failed"
             self.post.save()
-            logger.error(f"Image agent failed for {self.post.id}: {e}")
+            logger.error(f"Image agent completely failed for {self.post.id}: {e}")
             raise
+
+    def _save_image_artifact(self, prompt, model, cost, result):
+        """Helper to save image artifact."""
+        is_polli = model.startswith("pollinations") or hasattr(result, 'image_url')
+        provider = "pollinations" if is_polli else "openrouter"
+        
+        PostArtifact.objects.create(
+            post=self.post,
+            step=PostArtifact.Step.IMAGE,
+            input_prompt=prompt,
+            system_prompt="Image generation",
+            model_used=model,
+            provider_response={"truncated": True},
+            parsed_output={"image_generated": True, "provider": provider},
+            cost=cost,
+            is_active=True,
+        ).deactivate_previous()
+
+    def _update_post_image(self, cost):
+        """Helper to update post cost and status."""
+        self.post.image_generation_cost += cost
+        self.post.step_state["image"] = "completed"
+        self.post.save()
 
 
 def run_full_pipeline(
