@@ -38,8 +38,8 @@ FALLBACK_TEXT_MODELS = [
 ]
 
 FALLBACK_IMAGE_MODELS = [
-    "black-forest-labs/flux-1.1-pro", # High Quality
-    "google/gemini-2.0-flash-exp",    # Modern/Fast
+    "stabilityai/stable-diffusion-xl-base-1.0", # Reliable Standard
+    "openai/dall-e-3",                          # High Quality Fallback
 ]
 
 class BaseAgent:
