@@ -1005,20 +1005,26 @@ def run_news_pipeline(
         if generate_image:
             image_url = None
             
-            # Try source image first
-            if download_source_image and rss_item.source_image_url:
-                try:
-                    from services.storage import SupabaseStorageService
-                    import uuid
-                    
-                    # Download and upload to Supabase
-                    image_url = SupabaseStorageService.upload_from_url(
-                        rss_item.source_image_url,
-                        f"news_{post.id}_{uuid.uuid4().hex[:8]}"
-                    )
-                    logger.info(f"Downloaded source image to: {image_url}")
-                except Exception as e:
-                    logger.warning(f"Failed to download source image: {e}")
+            # Try source image first (from original RSS article)
+            if download_source_image:
+                if rss_item.source_image_url:
+                    logger.info(f"Source image URL found: {rss_item.source_image_url[:80]}...")
+                    try:
+                        from services.storage import SupabaseStorageService
+                        import uuid
+                        
+                        # Download and upload to Supabase
+                        image_url = SupabaseStorageService.upload_from_url(
+                            rss_item.source_image_url,
+                            f"news_{post.id}_{uuid.uuid4().hex[:8]}"
+                        )
+                        logger.info(f"✅ Successfully downloaded source image to Supabase: {image_url}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to download source image, will generate via AI: {e}")
+                else:
+                    logger.info("No source_image_url in RSS item, will generate image via AI")
+            else:
+                logger.info("download_source_image is disabled, generating image via AI")
             
             # Fallback to AI-generated image
             if not image_url:

@@ -74,12 +74,26 @@ class SupabaseStorageService:
         Downloads image from source_url and uploads to Supabase.
         """
         try:
-            logger.info(f"Downloading image from {source_url}")
-            response = requests.get(source_url, timeout=30)
+            logger.info(f"Downloading image from {source_url[:100]}...")
+            
+            # Use browser-like headers to bypass hotlink protection
+            download_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "image/avif,image/webp,image/png,image/svg+xml,image/*,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8",
+                "Referer": source_url,  # Some sites check referer
+            }
+            
+            response = requests.get(source_url, headers=download_headers, timeout=30, allow_redirects=True)
             if response.status_code != 200:
-                raise Exception(f"Failed to download source image: {response.status_code}")
+                raise Exception(f"Failed to download source image: HTTP {response.status_code}")
                 
             image_content = response.content
+            
+            # Validate it's actually an image
+            content_type = response.headers.get('Content-Type', '')
+            if not content_type.startswith('image') and len(image_content) < 1000:
+                raise Exception(f"Response doesn't appear to be an image: {content_type}")
             
             # Determine extension
             ext = "png" if "png" in source_url.lower() else "jpg"

@@ -188,30 +188,73 @@ class RSSService:
         )
     
     def _extract_image_url(self, entry: dict) -> str:
-        """Extract image URL from RSS entry."""
-        # Try media:content
+        """Extract image URL from RSS entry (comprehensive extraction)."""
+        
+        # 1. Try media:content (standard RSS media namespace)
         if hasattr(entry, 'media_content') and entry.media_content:
             for media in entry.media_content:
-                if media.get('type', '').startswith('image'):
-                    return media.get('url', '')
+                if media.get('type', '').startswith('image') or media.get('medium') == 'image':
+                    url = media.get('url', '')
+                    if url:
+                        logger.debug(f"Found image via media:content: {url[:60]}")
+                        return url
         
-        # Try media:thumbnail
+        # 2. Try media:thumbnail
         if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
-            return entry.media_thumbnail[0].get('url', '')
+            url = entry.media_thumbnail[0].get('url', '')
+            if url:
+                logger.debug(f"Found image via media:thumbnail: {url[:60]}")
+                return url
         
-        # Try enclosure
+        # 3. Try entry.image (some feeds use this directly)
+        if hasattr(entry, 'image'):
+            if isinstance(entry.image, dict):
+                url = entry.image.get('href', '') or entry.image.get('url', '') or entry.image.get('src', '')
+                if url:
+                    logger.debug(f"Found image via entry.image dict: {url[:60]}")
+                    return url
+            elif isinstance(entry.image, str) and entry.image.startswith('http'):
+                logger.debug(f"Found image via entry.image str: {entry.image[:60]}")
+                return entry.image
+        
+        # 4. Try enclosure (podcasts and some news feeds)
         if hasattr(entry, 'enclosures') and entry.enclosures:
             for enclosure in entry.enclosures:
-                if enclosure.get('type', '').startswith('image'):
-                    return enclosure.get('href', '') or enclosure.get('url', '')
+                enc_type = enclosure.get('type', '')
+                if enc_type.startswith('image') or any(ext in enclosure.get('href', '').lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']):
+                    url = enclosure.get('href', '') or enclosure.get('url', '')
+                    if url:
+                        logger.debug(f"Found image via enclosure: {url[:60]}")
+                        return url
         
-        # Try og:image in content
+        # 5. Try to extract from content HTML
         if hasattr(entry, 'content') and entry.content:
             content = entry.content[0].get('value', '')
-            match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', content)
+            match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', content, re.IGNORECASE)
             if match:
+                logger.debug(f"Found image via content HTML: {match.group(1)[:60]}")
                 return match.group(1)
         
+        # 6. Try to extract from summary/description HTML
+        for field in ['summary', 'description']:
+            if hasattr(entry, field):
+                html = getattr(entry, field, '')
+                if html:
+                    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', html, re.IGNORECASE)
+                    if match:
+                        logger.debug(f"Found image via {field} HTML: {match.group(1)[:60]}")
+                        return match.group(1)
+        
+        # 7. Try links with type image
+        if hasattr(entry, 'links') and entry.links:
+            for link in entry.links:
+                if link.get('type', '').startswith('image'):
+                    url = link.get('href', '')
+                    if url:
+                        logger.debug(f"Found image via link: {url[:60]}")
+                        return url
+        
+        logger.debug("No image found in RSS entry")
         return ''
     
     def _clean_html(self, html: str) -> str:
