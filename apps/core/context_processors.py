@@ -26,11 +26,18 @@ def agency_branding(request):
 
     user = request.user
     
+    # Detect theme from cookie
+    current_theme = request.COOKIES.get('theme', 'light')
+
     # 2. Super Admin (Global view)
     if user.role == 'super_admin':
         defaults.update({
             'agency_name': 'PostPro (Admin)',
             'is_super_admin': True,
+            'agency_logo_light': '/static/img/superadmin-logo-light.png',
+            'agency_logo_dark': '/static/img/superadmin-logo-dark.png',
+            'agency_logo_current': '/static/img/superadmin-logo-light.png' if current_theme == 'dark' else '/static/img/superadmin-logo-dark.png',
+            'agency_favicon': '/static/img/superadmin-favicon.png',
         })
         return defaults
     
@@ -39,8 +46,7 @@ def agency_branding(request):
     if not agency:
         return defaults
         
-    # Detect theme from cookie
-    current_theme = request.COOKIES.get('theme', 'light')
+
     
     return {
         'agency': agency,
