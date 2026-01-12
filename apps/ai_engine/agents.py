@@ -858,7 +858,10 @@ CONTEÚDO:
         parsed = self._parse_response(content)
         
         # Add source attribution at the end
-        if self.content_settings.include_source_attribution if hasattr(self, 'content_settings') and self.content_settings else True:
+        # NOTE: include_source_attribution exists on ProjectRSSSettings, not ProjectContentSettings
+        rss_settings = getattr(self.project, 'rss_settings', None)
+        should_include_attribution = getattr(rss_settings, 'include_source_attribution', True) if rss_settings else True
+        if should_include_attribution:
             attribution = f'''
 <p class="news-source-attribution" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9em; color: #666;">
     <em>Notícia originalmente publicada em <a href="{source_url}" rel="nofollow noopener" target="_blank">{source_name}</a>.</em>
