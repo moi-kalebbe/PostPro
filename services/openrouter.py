@@ -318,6 +318,8 @@ class OpenRouterService:
                     if isinstance(image_data, dict):
                         if "url" in image_data:
                             image_data = image_data["url"]
+                        elif "image_url" in image_data:
+                            image_data = image_data["image_url"]
                         elif "b64_json" in image_data:
                             image_data = f"data:image/png;base64,{image_data['b64_json']}"
                         elif "base64" in image_data:

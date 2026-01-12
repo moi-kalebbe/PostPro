@@ -40,7 +40,6 @@ FALLBACK_TEXT_MODELS = [
 FALLBACK_IMAGE_MODELS = [
     "black-forest-labs/flux-1.1-pro", # High Quality
     "google/gemini-2.0-flash-exp",    # Modern/Fast
-    "pollinations/flux",              # Free/Robust Fallback
 ]
 
 class BaseAgent:
