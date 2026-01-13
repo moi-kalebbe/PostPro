@@ -510,7 +510,7 @@ def superadmin_whatsapp_connect_view(request):
         if action == 'reset':
             config.wuzapi_user_id = None
             config.wuzapi_token = None
-            config.wuzapi_phone = None
+            config.wuzapi_phone = ''
             config.wuzapi_connected = False
             config.wuzapi_connected_at = None
             config.save()
@@ -652,7 +652,7 @@ def superadmin_whatsapp_connect_view(request):
                     )
                     
                     config.wuzapi_connected = False
-                    config.wuzapi_phone = None
+                    config.wuzapi_phone = ''
                     config.wuzapi_connected_at = None
                     config.save()
                     
