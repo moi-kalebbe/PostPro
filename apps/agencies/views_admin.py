@@ -208,7 +208,21 @@ def agency_action_view(request, agency_id):
         elif action == 'delete':
             # Delete agency (destructive)
             agency_name = agency.name
+            
+            # Find and delete owner user to prevent "User already exists" on recreation
+            # Owner is linked via members related_name with role AGENCY_OWNER
+            from apps.accounts.models import User
+            owner = agency.members.filter(role=User.Role.AGENCY_OWNER).first()
+            owner_deleted = False
+            owner_email = None
+            
+            if owner:
+                owner_email = owner.email
+                owner.delete()
+                owner_deleted = True
+            
             agency.delete()
+            
             # Log action (before delete? No, after to confirm, but agency obj is gone. Use ID)
             ActivityLog.objects.create(
                 actor_user=request.user,
@@ -216,7 +230,11 @@ def agency_action_view(request, agency_id):
                 action='AGENCY_DELETED',
                 entity_type='Agency',
                 entity_id=str(agency_id),
-                metadata={'agency_name': agency_name}
+                metadata={
+                    'agency_name': agency_name,
+                    'owner_deleted': owner_deleted,
+                    'owner_email': owner_email
+                }
             )
             messages.success(request, f'Agência {agency_name} excluída com sucesso.')
             return redirect('admin_panel:agencies_list')
