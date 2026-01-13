@@ -345,12 +345,20 @@ def agency_create_view(request):
             phone_cleaned = '55' + phone_cleaned
         
         # Check if user already exists (by email - usado como username para login)
-        if User.objects.filter(email=owner_email).exists():
-            messages.error(request, f'Já existe um usuário com este email: {owner_email}')
-            return render(request, 'admin_panel/agency_form.html', {
-                'plan_limits': PLAN_LIMITS,
-                'form_data': request.POST,
-            })
+        existing_user = User.objects.filter(email=owner_email).first()
+        is_orphan_rescue = False
+        
+        if existing_user:
+            # Check if user is "orphan" (has role but no agency linked)
+            if existing_user.agency is None:
+                is_orphan_rescue = True
+                # We will reuse this user
+            else:
+                messages.error(request, f'Já existe um usuário com este email vinculado a outra agência: {owner_email}')
+                return render(request, 'admin_panel/agency_form.html', {
+                    'plan_limits': PLAN_LIMITS,
+                    'form_data': request.POST,
+                })
         
         # Get plan limits
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['starter'])
@@ -369,16 +377,27 @@ def agency_create_view(request):
         # Generate password
         password = generate_password()
         
-        # Create user (usando email como username para login funcionar)
-        user = User.objects.create_user(
-            username=owner_email,
-            email=owner_email,
-            password=password,
-            first_name=owner_name.split()[0] if owner_name else '',
-            last_name=' '.join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else '',
-            role=User.Role.AGENCY_OWNER,
-            agency=agency,
-        )
+        if is_orphan_rescue:
+            # Reuse existing user
+            user = existing_user
+            user.set_password(password)
+            user.first_name = owner_name.split()[0] if owner_name else ''
+            user.last_name = ' '.join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ''
+            user.role = User.Role.AGENCY_OWNER
+            user.agency = agency
+            user.save()
+            messages.info(request, f'Usuário órfão encontrado e recuperado: {owner_email}')
+        else:
+            # Create user (usando email como username para login funcionar)
+            user = User.objects.create_user(
+                username=owner_email,
+                email=owner_email,
+                password=password,
+                first_name=owner_name.split()[0] if owner_name else '',
+                last_name=' '.join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else '',
+                role=User.Role.AGENCY_OWNER,
+                agency=agency,
+            )
         
         # Send WhatsApp if enabled
         whatsapp_sent = False
