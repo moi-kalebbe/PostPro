@@ -1,4 +1,4 @@
-# apps/core/context_processors.py
+﻿# apps/core/context_processors.py
 
 from apps.agencies.models import Agency
 
@@ -7,14 +7,14 @@ def agency_branding(request):
     Injeta branding da agência atual em todos os templates.
     """
     
-    # Defaults (PostPro branding)
+    # Defaults (PostPro branding) - usando logos do superadmin como padrão
     defaults = {
         'agency': None,
         'agency_name': 'PostPro',
-        'agency_logo_light': '/static/img/logo-light.png',
-        'agency_logo_dark': '/static/img/logo-dark.png',
-        'agency_logo_current': '/static/img/logo-light.png',
-        'agency_favicon': '/static/img/favicon.ico',
+        'agency_logo_light': '/static/img/superadmin-logo-light.png',
+        'agency_logo_dark': '/static/img/superadmin-logo-dark.png',
+        'agency_logo_current': '/static/img/superadmin-logo-dark.png',
+        'agency_favicon': '/static/img/superadmin-favicon.png',
         'agency_primary_color': '#FF6B35',
         'agency_secondary_color': '#004E89',
         'is_super_admin': False,
