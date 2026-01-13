@@ -519,6 +519,9 @@ def publish_to_wordpress(self, post_id: str):
                 "featured_image_url": post.featured_image_url,
                 "postpro_post_id": str(post.id),
                 "seo_data": post.seo_data or {},
+                # Phase 2: Native Scheduling
+                "status": post.post_status or "publish",
+                "date": post.scheduled_at.isoformat() if post.scheduled_at else None,
             },
             idempotency_key=idempotency_key,
         )
@@ -698,8 +701,32 @@ def generate_post_from_plan_item(self, item_id: str):
             
             scheduled_datetime = None
             if item.scheduled_date:
+                # DEFAULT SCHEDULE LOGIC (Phase 2)
+                # Parse sequence from external_id (e.g., ..._day_1_seq_2)
+                seq_index = 0
+                if "_seq_" in item.external_id:
+                    try:
+                        seq_index = int(item.external_id.split("_seq_")[1])
+                    except (IndexError, ValueError):
+                        pass
+                
+                # Distribution Rules:
+                # 0 (1st post): 10:00 (Morning)
+                # 1 (2nd post): 16:00 (Afternoon)
+                # 2 (3rd post): 19:00 (Evening)
+                # 3+ : +2 hours from last
+                
+                hour = 10
+                if seq_index == 1:
+                    hour = 16
+                elif seq_index == 2:
+                    hour = 19
+                elif seq_index > 2:
+                    hour = 19 + (seq_index - 2)
+                    if hour > 23: hour = 23
+
                 scheduled_datetime = tz.make_aware(
-                    datetime.combine(item.scheduled_date, time(9, 0, 0))  # Default to 9:00 AM
+                    datetime.combine(item.scheduled_date, time(hour, 0, 0))
                 )
             
             # Create Post instance
@@ -864,9 +891,14 @@ def check_rss_feeds_task(self):
                     # logger.debug(f"Skipping feed {feed}: not yet time")
                     continue
             
-            # Check daily limit (per project)
+            # Check daily limit (RSS settings)
             if not settings.can_process_more_today():
-                logger.info(f"Skipping feed {feed}: project daily limit reached")
+                logger.info(f"Skipping feed {feed}: daily limit reached")
+                continue
+
+            # Check GLOBAL project limit (Phase 2)
+            if not project.can_generate_post():
+                logger.info(f"Skipping feed {feed}: Project {project.name} global limit reached")
                 continue
             
             # Fetch and create new RSS items
@@ -991,6 +1023,37 @@ def process_rss_item_task(self, rss_item_id: str):
             site_url=settings.SITE_URL,
             site_name="PostPro"
         )
+        
+        # Determine Schedule for RSS (Smart Scheduling)
+        # Try to find a slot today that doesn't collide
+        from django.utils import timezone as tz
+        now = tz.now()
+        
+        # Default: publish 2 hours from now to allow generation time
+        sched_time = now + timedelta(hours=2)
+        
+        # Adjust to business hours (09:00 - 21:00)
+        # If it's late, push to tomorrow morning
+        if sched_time.hour > 21:
+             sched_time = sched_time + timedelta(days=1)
+             sched_time = sched_time.replace(hour=10, minute=0)
+        elif sched_time.hour < 9:
+             sched_time = sched_time.replace(hour=10, minute=0)
+             
+        # Check collision with existing future posts
+        overlapping = Post.objects.filter(
+            project=project,
+            scheduled_at__range=(sched_time - timedelta(minutes=90), sched_time + timedelta(minutes=90))
+        ).exists()
+        
+        if overlapping:
+            # Shift 3 hours
+            sched_time = sched_time + timedelta(hours=3)
+            
+        post.scheduled_at = sched_time
+        post.post_status = 'future'
+        post.save()
+
         
         # Run news pipeline
         run_news_pipeline(

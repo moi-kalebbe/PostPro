@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Leads - {{ request.user.agency.get_display_name }}{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1>Leads Capturados</h1>
+            <p class="page-subtitle">{{ stats.total }} leads no total</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid-responsive-3 mb-6">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.new }}</div>
+            <div class="stat-label">Novos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.contacted }}</div>
+            <div class="stat-label">Contatados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.converted }}</div>
+            <div class="stat-label">Convertidos</div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-bar mb-6">
+        <div class="form-group mb-0">
+            <label class="form-label">Filtrar por status:</label>
+            <select id="status-filter" class="form-select" onchange="filterLeads(this.value)">
+                <option value="">Todos</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Leads Table -->
+    <div class="card">
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Plano</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads %}
+                    <tr data-lead-id="{{ lead.id }}"
+                        data-lead-name="{{ lead.name }}"
+                        data-lead-email="{{ lead.email }}"
+                        data-lead-phone="{{ lead.phone|default:'' }}"
+                        data-lead-company="{{ lead.company_name|default:'' }}"
+                        data-lead-plan="{{ lead.plan.name|default:'Não selecionado' }}"
+                        data-lead-message="{{ lead.message|default:'' }}"
+                        data-lead-utm-source="{{ lead.utm_source|default:'' }}"
+                        data-lead-utm-medium="{{ lead.utm_medium|default:'' }}"
+                        data-lead-utm-campaign="{{ lead.utm_campaign|default:'' }}"
+                        data-lead-date="{{ lead.created_at|date:'d/m/Y H:i' }}"
+                        data-lead-notes="{{ lead.notes|default:'' }}">
+                        <td>
+                            <strong>{{ lead.name }}</strong>
+                            {% if lead.company_name %}
+                            <br><small class="text-muted">{{ lead.company_name }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="mailto:{{ lead.email }}">{{ lead.email }}</a>
+                        </td>
+                        <td>
+                            {% if lead.phone %}
+                            <a href="https://wa.me/55{{ lead.phone }}" target="_blank" class="text-success">{{ lead.phone }}</a>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if lead.plan %}
+                            <span class="badge badge-info">{{ lead.plan.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" data-lead-id="{{ lead.id }}" onchange="updateLeadStatus('{{ lead.id }}', this.value)">
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <span title="{{ lead.created_at|date:'d/m/Y H:i' }}">{{ lead.created_at|date:"d/m/Y" }}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Ver detalhes" onclick="showLeadDetails('{{ lead.id }}')">👁️</button>
+                                {% if lead.phone %}
+                                <button type="button" class="btn btn-sm btn-success" title="Enviar WhatsApp" onclick="sendWhatsApp('{{ lead.id }}')">📱</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted p-6">
+                            Nenhum lead capturado ainda.
+                            {% if not request.user.agency.landing_page.is_published %}
+                            <br><a href="{% url 'dashboard:landing_config' %}">Publique sua landing page</a> para começar a capturar leads.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Lead Details Modal -->
+<div id="lead-modal" class="modal-backdrop">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Detalhes do Lead</h3>
+            <button type="button" class="modal-close" onclick="closeLeadModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="lead-modal-body"></div>
+        <div class="modal-footer" id="lead-modal-footer"></div>
+    </div>
+</div>
+
+<style>
+.btn-group { display: flex; gap: 0.25rem; }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; border-radius: 0.375rem; }
+.btn-outline-primary { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+.btn-outline-primary:hover { background: var(--primary); color: white; }
+.btn-success { background: #25D366; border: none; color: white; }
+.btn-success:hover { background: #1ebe59; }
+.form-select-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 100px; }
+.lead-detail-grid { display: grid; gap: 1rem; }
+.lead-detail-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.lead-detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.lead-detail-value { font-size: 1rem; color: var(--text); }
+.lead-detail-section { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; }
+.lead-detail-section:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.lead-message-box { background: var(--surface-alt); border-radius: 0.5rem; padding: 1rem; margin-top: 0.5rem; white-space: pre-wrap; }
+.utm-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.utm-badge { background: var(--surface-alt); border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.utm-badge strong { color: var(--text); }
+.modal-footer { display: flex; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border); justify-content: flex-end; }
+.btn-whatsapp { background: #25D366; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+.btn-whatsapp:hover { background: #1ebe59; color: white; }
+</style>
+
+<script>
+function filterLeads(status) {
+    const url = new URL(window.location.href);
+    if (status) { url.searchParams.set('status', status); } else { url.searchParams.delete('status'); }
+    window.location.href = url.toString();
+}
+
+async function updateLeadStatus(leadId, newStatus) {
+    try {
+        const response = await fetch(`/dashboard/leads/${leadId}/status/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await response.json();
+        if (!data.success) { alert('Erro ao atualizar: ' + data.error); }
+    } catch (error) { console.error('Error:', error); alert('Erro ao atualizar o lead.'); }
+}
+
+function getLeadData(leadId) {
+    const row = document.querySelector(`tr[data-lead-id="${leadId}"]`);
+    if (!row) return null;
+    return {
+        id: leadId,
+        name: row.dataset.leadName,
+        email: row.dataset.leadEmail,
+        phone: row.dataset.leadPhone,
+        company: row.dataset.leadCompany,
+        plan: row.dataset.leadPlan,
+        message: row.dataset.leadMessage,
+        utmSource: row.dataset.leadUtmSource,
+        utmMedium: row.dataset.leadUtmMedium,
+        utmCampaign: row.dataset.leadUtmCampaign,
+        date: row.dataset.leadDate,
+        notes: row.dataset.leadNotes
+    };
+}
+
+function showLeadDetails(leadId) {
+    const lead = getLeadData(leadId);
+    if (!lead) return;
+
+    let utmHtml = '';
+    if (lead.utmSource || lead.utmMedium || lead.utmCampaign) {
+        utmHtml = `<div class="lead-detail-section"><div class="lead-detail-item"><span class="lead-detail-label">UTM / Origem do Lead</span><div class="utm-badges">${lead.utmSource ? `<span class="utm-badge"><strong>Source:</strong> ${lead.utmSource}</span>` : ''}${lead.utmMedium ? `<span class="utm-badge"><strong>Medium:</strong> ${lead.utmMedium}</span>` : ''}${lead.utmCampaign ? `<span class="utm-badge"><strong>Campaign:</strong> ${lead.utmCampaign}</span>` : ''}</div></div></div>`;
+    }
+
+    let messageHtml = '';
+    if (lead.message && lead.message.trim()) {
+        messageHtml = `<div class="lead-detail-section"><div class="lead-detail-item"><span class="lead-detail-label">Mensagem</span><div class="lead-message-box">${lead.message}</div></div></div>`;
+    }
+
+    document.getElementById('lead-modal-body').innerHTML = `
+        <div class="lead-detail-grid">
+            <div class="lead-detail-section">
+                <div class="lead-detail-item"><span class="lead-detail-label">Nome</span><span class="lead-detail-value">${lead.name}</span></div>
+                ${lead.company ? `<div class="lead-detail-item" style="margin-top: 0.5rem;"><span class="lead-detail-label">Empresa / Site</span><span class="lead-detail-value">${lead.company}</span></div>` : ''}
+            </div>
+            <div class="lead-detail-section">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="lead-detail-item"><span class="lead-detail-label">Email</span><span class="lead-detail-value"><a href="mailto:${lead.email}">${lead.email}</a></span></div>
+                    <div class="lead-detail-item"><span class="lead-detail-label">WhatsApp</span><span class="lead-detail-value">${lead.phone || '<span class="text-muted">Não informado</span>'}</span></div>
+                </div>
+            </div>
+            <div class="lead-detail-section">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="lead-detail-item"><span class="lead-detail-label">Plano de Interesse</span><span class="lead-detail-value">${lead.plan}</span></div>
+                    <div class="lead-detail-item"><span class="lead-detail-label">Data do Cadastro</span><span class="lead-detail-value">${lead.date}</span></div>
+                </div>
+            </div>
+            ${messageHtml}
+            ${utmHtml}
+        </div>
+    `;
+
+    let footerHtml = '';
+    if (lead.phone) {
+        const whatsappUrl = buildWhatsAppUrl(lead);
+        footerHtml = `<a href="${whatsappUrl}" target="_blank" class="btn-whatsapp">📱 Enviar WhatsApp</a>`;
+    }
+    document.getElementById('lead-modal-footer').innerHTML = footerHtml;
+
+    const modalBackdrop = document.getElementById('lead-modal');
+    modalBackdrop.classList.add('active');
+    modalBackdrop.style.visibility = 'visible';
+    modalBackdrop.style.opacity = '1';
+}
+
+function buildWhatsAppUrl(lead) {
+    let phone = lead.phone.replace(/\D/g, '');
+    if (!phone.startsWith('55')) { phone = '55' + phone; }
+    
+    const agencyName = '{{ request.user.agency.get_display_name|escapejs }}';
+    let message = `Olá ${lead.name}! 👋\n\nAqui é da ${agencyName}. Recebi seu contato através do nosso site`;
+    if (lead.plan && lead.plan !== 'Não selecionado') { message += ` e vi que você tem interesse no plano *${lead.plan}*`; }
+    message += `.\n\n`;
+    if (lead.company) { message += `Vi que sua empresa é a *${lead.company}*. `; }
+    message += `Gostaria de saber como posso te ajudar! 🚀`;
+    if (lead.utmSource || lead.utmCampaign) {
+        message += `\n\n---\n_Origem: ${lead.utmSource || 'direto'}`;
+        if (lead.utmCampaign) { message += ` | Campanha: ${lead.utmCampaign}`; }
+        message += `_`;
+    }
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function sendWhatsApp(leadId) {
+    const lead = getLeadData(leadId);
+    if (!lead || !lead.phone) return;
+    window.open(buildWhatsAppUrl(lead), '_blank');
+}
+
+function closeLeadModal() {
+    const modalBackdrop = document.getElementById('lead-modal');
+    modalBackdrop.classList.remove('active');
+    setTimeout(() => { if (!modalBackdrop.classList.contains('active')) { modalBackdrop.style.visibility = 'hidden'; modalBackdrop.style.opacity = '0'; } }, 300);
+}
+
+document.getElementById('lead-modal').addEventListener('click', function(e) { if (e.target === this) { closeLeadModal(); } });
+</script>
+{% endblock %}

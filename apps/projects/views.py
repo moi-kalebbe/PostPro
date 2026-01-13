@@ -47,7 +47,7 @@ def project_create_view(request):
         return redirect('projects:list')
     
     if request.method == 'POST':
-        form = ProjectForm(request.POST)
+        form = ProjectForm(request.POST, agency=agency)
         if form.is_valid():
             project = form.save(commit=False)
             project.agency = agency
@@ -86,7 +86,7 @@ def project_create_view(request):
             messages.success(request, f'Projeto "{project.name}" criado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
     else:
-        form = ProjectForm()
+        form = ProjectForm(agency=agency)
     
     context = {
         'form': form,
@@ -181,7 +181,7 @@ def project_edit_view(request, project_id):
     project = request.project
     
     if request.method == 'POST':
-        form = ProjectForm(request.POST, instance=project)
+        form = ProjectForm(request.POST, instance=project, agency=project.agency)
         if form.is_valid():
             project = form.save(commit=False)
             
@@ -220,7 +220,7 @@ def project_edit_view(request, project_id):
             messages.success(request, 'Projeto atualizado com sucesso!')
             return redirect('projects:detail', project_id=project.id)
     else:
-        form = ProjectForm(instance=project)
+        form = ProjectForm(instance=project, agency=project.agency)
     
     context = {
         'form': form,

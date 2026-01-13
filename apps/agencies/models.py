@@ -347,6 +347,26 @@ class AgencyClientPlan(models.Model):
         blank=True,
         help_text="Preço mensal (opcional)"
     )
+    
+    # Campos para Landing Page
+    description = models.TextField(
+        blank=True,
+        help_text="Descrição detalhada do plano"
+    )
+    features = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Lista de features, ex: ["10 posts", "Suporte 24h"]'
+    )
+    is_highlighted = models.BooleanField(
+        default=False,
+        help_text="Destaque visual na landing page (plano recomendado)"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Ordem de exibição (menor = primeiro)"
+    )
+    
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -355,10 +375,16 @@ class AgencyClientPlan(models.Model):
         db_table = 'agency_client_plans'
         verbose_name = 'Agency Client Plan'
         verbose_name_plural = 'Agency Client Plans'
-        ordering = ['agency', 'posts_per_month']
+        ordering = ['agency', 'order', 'posts_per_month']
     
     def __str__(self):
         return f"{self.agency.name} - {self.name} ({self.posts_per_month} posts/mês)"
+    
+    def get_features_list(self):
+        """Retorna features como lista (para template)."""
+        if isinstance(self.features, list):
+            return self.features
+        return []
 
 
 class SuperAdminConfig(models.Model):
@@ -415,3 +441,170 @@ class SuperAdminConfig(models.Model):
         instance, _ = cls.objects.get_or_create(pk=1)
         return instance
 
+
+class AgencyLandingPage(models.Model):
+    """
+    Configuração da Landing Page da agência.
+    Cada agência pode ter uma landing page pública com conteúdo gerado por IA.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agency = models.OneToOneField(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name='landing_page'
+    )
+    
+    # Conteúdo gerado por IA
+    hero_title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Título principal do hero"
+    )
+    hero_subtitle = models.TextField(
+        blank=True,
+        help_text="Subtítulo/descrição do hero"
+    )
+    about_section = models.TextField(
+        blank=True,
+        help_text="Texto da seção 'Sobre'"
+    )
+    cta_text = models.CharField(
+        max_length=100,
+        default="Começar Agora",
+        help_text="Texto do botão CTA principal"
+    )
+    
+    # Meta SEO
+    meta_title = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="Título SEO (máx 60 caracteres)"
+    )
+    meta_description = models.CharField(
+        max_length=160,
+        blank=True,
+        help_text="Descrição SEO (máx 160 caracteres)"
+    )
+    
+    # Conteúdo Estendido (V2)
+    extended_content = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Conteúdo Estendido',
+        help_text='Conteúdo adicional gerado por IA (FAQ, benefits, pain points, etc)'
+    )
+    
+    # Contato
+    whatsapp_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Número WhatsApp para contato (ex: 5511999999999)"
+    )
+    email_contact = models.EmailField(
+        blank=True,
+        help_text="Email para contato"
+    )
+    
+    # Controle
+    is_published = models.BooleanField(
+        default=False,
+        help_text="Landing page está publicada e acessível?"
+    )
+    ai_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Quando o conteúdo foi gerado pela IA"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'agency_landing_pages'
+        verbose_name = 'Agency Landing Page'
+        verbose_name_plural = 'Agency Landing Pages'
+    
+    def __str__(self):
+        status = "Publicada" if self.is_published else "Rascunho"
+        return f"Landing - {self.agency.name} ({status})"
+    
+    def get_public_url(self):
+        """Retorna a URL pública da landing page."""
+        from django.urls import reverse
+        return reverse('public_landing', kwargs={'slug': self.agency.slug})
+    
+    def has_content(self):
+        """Verifica se tem conteúdo básico preenchido."""
+        return bool(self.hero_title and self.hero_subtitle)
+
+
+class AgencyLead(models.Model):
+    """
+    Leads capturados pela landing page da agência.
+    Cada submissão de formulário gera um lead.
+    """
+    
+    class Status(models.TextChoices):
+        NEW = 'new', 'Novo'
+        CONTACTED = 'contacted', 'Contatado'
+        CONVERTED = 'converted', 'Convertido'
+        LOST = 'lost', 'Perdido'
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    agency = models.ForeignKey(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name='leads'
+    )
+    plan = models.ForeignKey(
+        AgencyClientPlan,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='leads',
+        help_text="Plano de interesse selecionado pelo lead"
+    )
+    
+    # Dados do lead
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True)
+    company_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Nome da empresa/site do lead"
+    )
+    message = models.TextField(
+        blank=True,
+        help_text="Mensagem opcional do lead"
+    )
+    
+    # UTM tracking
+    utm_source = models.CharField(max_length=100, blank=True)
+    utm_medium = models.CharField(max_length=100, blank=True)
+    utm_campaign = models.CharField(max_length=100, blank=True)
+    
+    # Status do lead
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.NEW
+    )
+    
+    # Notas internas
+    notes = models.TextField(
+        blank=True,
+        help_text="Notas internas sobre o lead"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'agency_leads'
+        verbose_name = 'Agency Lead'
+        verbose_name_plural = 'Agency Leads'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.agency.name} ({self.get_status_display()})"

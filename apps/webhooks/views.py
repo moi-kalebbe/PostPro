@@ -530,8 +530,36 @@ def save_keywords_view(request):
             keywords = keywords[:10]  # Limit to 10
         
         from apps.automation.models import EditorialPlan, Post
+        from apps.projects.models import RSSFeed
         from datetime import date, timedelta
         
+        # ========================================
+        # Calculate Posts Per Day (Phase 2 Logic)
+        # ========================================
+        
+        # 1. Get Plan Limit
+        plan_limit = 30 # Default fallback
+        if project.client_plan:
+            plan_limit = project.client_plan.posts_per_month
+        elif project.agency and hasattr(project.agency, 'plan'):
+            # Fallback to agency legacy plan logic if needed, but client_plan is preferred
+            pass
+            
+        # 2. Check for Active RSS Feeds
+        has_active_rss = RSSFeed.objects.filter(project=project, is_active=True).exists()
+        
+        # 3. Determine Editorial Volume
+        if has_active_rss:
+            # If RSS is active, reserve capacity for news.
+            # Keep Editorial skeleton to 1 post/day minimum.
+            posts_per_day = 1
+            logger.info(f"Project {project.id} has RSS. Setting editorial to {posts_per_day}/day (Plan limit: {plan_limit})")
+        else:
+            # If NO RSS, fill the entire capacity with Editorial content.
+            # Floor division: 60/30 = 2, 90/30 = 3, 45/30 = 1
+            posts_per_day = max(1, plan_limit // 30)
+            logger.info(f"Project {project.id} has NO RSS. Setting editorial to {posts_per_day}/day based on limit {plan_limit}")
+
         # ========================================
         # RESET: Delete existing posts and plans
         # ========================================
@@ -558,6 +586,7 @@ def save_keywords_view(request):
             project=project,
             keywords=keywords,
             start_date=date.today() + timedelta(days=1),
+            posts_per_day=posts_per_day,
             status=EditorialPlan.Status.GENERATING
         )
             
@@ -769,6 +798,7 @@ def reject_plan_view(request):
     """
     from apps.automation.models import EditorialPlan as EP
     from apps.automation.tasks import generate_editorial_plan
+    from apps.projects.models import RSSFeed
     from datetime import date, timedelta
     
     project = request.project
@@ -802,11 +832,24 @@ def reject_plan_view(request):
     current_plan.rejection_reason = "Rejected by user via plugin"
     current_plan.save(update_fields=['status', 'rejection_reason'])
     
+    # Recalculate posts_per_day (in case settings changed)
+    plan_limit = 30
+    if project.client_plan:
+        plan_limit = project.client_plan.posts_per_month
+        
+    has_active_rss = RSSFeed.objects.filter(project=project, is_active=True).exists()
+    
+    if has_active_rss:
+        posts_per_day = 1
+    else:
+        posts_per_day = max(1, plan_limit // 30)
+
     # Create new plan
     new_plan = EP.objects.create(
         project=project,
         keywords=current_plan.keywords,  # Reuse same keywords
         start_date=date.today() + timedelta(days=1),
+        posts_per_day=posts_per_day,
         status=EP.Status.GENERATING
     )
     

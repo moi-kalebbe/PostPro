@@ -164,6 +164,10 @@ class EditorialPipelineService:
         profile = plan.site_profile
         existing_titles = [p['title'] for p in profile.recent_posts] if profile else []
         
+        # Determine number of posts needed
+        posts_daily = plan.posts_per_day
+        total_items_needed = days * posts_daily
+        
         trends_context = ""
         if trend_pack:
             insights = sorted(trend_pack.insights, key=lambda x: x.get('relevance_score', 0), reverse=True)[:10]
@@ -196,9 +200,10 @@ Tone: {self.project.tone}
 {avoid_section}
 
 Requirements:
-1. Generate exactly 1 post idea per day for {days} days.
-2. Ensure a mix of informational (guides, how-to) and commercial (reviews, comparisons) intent.
-3. Group topics into logical clusters.
+1. Generate exactly {posts_daily} post idea(s) per day for {days} days. Total: {total_items_needed} items.
+2. For days with multiple posts, vary the intent (e.g. one morning news/guide, one afternoon review).
+3. Ensure a mix of informational (guides, how-to) and commercial (reviews, comparisons) intent.
+4. Group topics into logical clusters.
 4. Titles must be click-worthy and SEO optimized.
 5. Use Portuguese (Brazil).
 6. NEVER repeat topics from the AVOID list above.
@@ -234,9 +239,18 @@ Example:
                 # Calculate date
                 sched_date = plan.start_date + timedelta(days=item.day - 1)
                 
+                # Check for other items on the same day in this batch to generate unique sequence
+                day_items = [i for i in parsed.items if i.day == item.day]
+                try:
+                    # Find index of this item in the day's list (0, 1, 2...)
+                    # We rely on the order returned by LLM
+                    seq_index = next(i for i, x in enumerate(day_items) if x.title == item.title)
+                except StopIteration:
+                    seq_index = 0
+
                 # Generate stable external_id
-                # Format: {project_id}_{plan_id}_day_{day}
-                ext_id = f"{self.project.id}_{plan.id}_day_{item.day}"
+                # Format: {project_id}_{plan_id}_day_{day}_seq_{seq}
+                ext_id = f"{self.project.id}_{plan.id}_day_{item.day}_seq_{seq_index}"
                 
                 items_to_create.append(EditorialPlanItem(
                     plan=plan,

@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Landing Page - {{ request.user.agency.get_display_name }}{% endblock %}
+
+{% block sidebar %}
+{% include 'components/sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1>Landing Page</h1>
+            <p class="page-subtitle">Configure sua página pública de captação de leads</p>
+        </div>
+        <div class="page-actions btn-group-responsive">
+            {% if landing_page.is_published %}
+            <a href="{{ public_url }}" target="_blank" class="btn btn-secondary">
+                <i class="icon-external-link"></i> Ver Página
+            </a>
+            {% endif %}
+            <button type="button" id="btn-generate-ai" class="btn btn-primary">
+                <i class="icon-sparkles"></i> Gerar com IA
+            </button>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-row items-start">
+            <!-- Left Column: Content (Flex 2) -->
+            <div class="flex-col gap-4" style="flex: 2; min-width: 0;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Conteúdo Principal</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Seletor de Tom (V2) -->
+                        <div class="form-group">
+                            <label for="ai_tone" class="form-label">Tom da Comunicação</label>
+                            <select id="ai_tone" name="ai_tone" class="form-select">
+                                <option value="professional">🏢 Profissional e Confiável</option>
+                                <option value="friendly">😊 Amigável e Acessível</option>
+                                <option value="bold">🚀 Ousado e Disruptivo</option>
+                                <option value="luxurious">✨ Premium e Sofisticado</option>
+                                <option value="startup">💡 Moderno e Inovador</option>
+                            </select>
+                            <span class="form-help">Define o estilo de escrita da sua landing page ao gerar com IA</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="hero_title" class="form-label">Título Hero</label>
+                            <input type="text" id="hero_title" name="hero_title" value="{{ landing_page.hero_title }}" class="form-input" maxlength="200" placeholder="Transforme seu blog em uma máquina de vendas">
+                            <span class="form-help">Título principal que aparece no topo da página</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="hero_subtitle" class="form-label">Subtítulo Hero</label>
+                            <textarea id="hero_subtitle" name="hero_subtitle" class="form-textarea" rows="3" placeholder="Geramos conteúdo otimizado para SEO de forma 100% automática...">{{ landing_page.hero_subtitle }}</textarea>
+                            <span class="form-help">Descrição curta abaixo do título</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="about_section" class="form-label">Seção Sobre</label>
+                            <textarea id="about_section" name="about_section" class="form-textarea" rows="6" placeholder="Conte um pouco sobre sua agência, valores e diferenciais...">{{ landing_page.about_section }}</textarea>
+                            <span class="form-help">Texto completo da seção "Sobre"</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cta_text" class="form-label">Texto do Botão CTA</label>
+                            <input type="text" id="cta_text" name="cta_text" value="{{ landing_page.cta_text|default:'Começar Agora' }}" class="form-input" maxlength="100" placeholder="Começar Agora">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">SEO</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="meta_title" class="form-label">Título SEO</label>
+                            <input type="text" id="meta_title" name="meta_title" value="{{ landing_page.meta_title }}" class="form-input" maxlength="60" placeholder="Nome da Agência | Automação de Conteúdo">
+                            <span class="form-help">Máximo 60 caracteres</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="meta_description" class="form-label">Descrição SEO</label>
+                            <textarea id="meta_description" name="meta_description" class="form-textarea" rows="2" maxlength="160" placeholder="Gere artigos otimizados para SEO automaticamente...">{{ landing_page.meta_description }}</textarea>
+                            <span class="form-help">Máximo 160 caracteres</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Settings (Flex 1) -->
+            <div class="flex-col gap-4" style="flex: 1; min-width: 0;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Contato</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="whatsapp_number" class="form-label">WhatsApp</label>
+                            <input type="text" id="whatsapp_number" name="whatsapp_number" class="form-input" value="{{ landing_page.whatsapp_number }}" placeholder="5511999999999">
+                            <span class="form-help">Número com DDD e código do país</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email_contact" class="form-label">Email</label>
+                            <input type="email" id="email_contact" name="email_contact" class="form-input" value="{{ landing_page.email_contact }}" placeholder="contato@suaagencia.com.br">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Publicação</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group flex items-center gap-2">
+                            <input type="checkbox" name="is_published" id="is_published" class="form-checkbox" {% if landing_page.is_published %}checked{% endif %}>
+                            <label for="is_published" class="form-label mb-0" style="cursor: pointer;">Publicar landing page</label>
+                        </div>
+                        <div class="text-sm text-muted">
+                            Quando publicada, estará acessível em: <a href="/p/{{ request.user.agency.slug }}/" target="_blank">/p/{{ request.user.agency.slug }}/</a>
+                        </div>
+
+                        {% if landing_page.ai_generated_at %}
+                        <div class="alert alert-info mt-4 mb-0">
+                            <i class="icon-sparkles"></i>
+                            <span>Gerado por IA em {{ landing_page.ai_generated_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Planos Exibidos</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if plans %}
+                        <ul class="flex-col gap-2" style="list-style: none; padding: 0; margin: 0;">
+                            {% for plan in plans %}
+                            <li class="flex items-center justify-between p-2" style="border-bottom: 1px solid var(--border-color);">
+                                <div>
+                                    <strong class="text-sm">{{ plan.name }}</strong>
+                                    <div class="text-xs text-muted">{{ plan.posts_per_month }} posts/mês</div>
+                                </div>
+                                {% if plan.is_highlighted %}<span class="badge badge-primary">Destaque</span>{% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted text-sm">Nenhum plano cadastrado. <a href="{% url 'dashboard:plans_list' %}">Criar planos</a></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="icon-save"></i> Salvar Alterações
+            </button>
+            {% if landing_page.is_published %}
+            <a href="{% url 'dashboard:landing_preview' %}" target="_blank" class="btn btn-secondary">
+                <i class="icon-eye"></i> Preview
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnGenerateAI = document.getElementById('btn-generate-ai');
+
+    // Create toast container
+    if (!document.getElementById('toast-container')) {
+        const toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+        document.body.appendChild(toastContainer);
+    }
+
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6';
+        toast.style.cssText = 'padding: 16px 24px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 400px; animation: slideIn 0.3s ease;';
+        toast.style.backgroundColor = bgColor;
+        toast.innerHTML = message;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 300); }, 5000);
+    }
+
+    btnGenerateAI.addEventListener('click', async function() {
+        if (this.classList.contains('loading')) return;
+
+        const selectedTone = document.getElementById('ai_tone').value;
+        const toneLabel = document.getElementById('ai_tone').options[document.getElementById('ai_tone').selectedIndex].text;
+
+        if (!confirm('Isso irá gerar novo conteúdo com tom "' + toneLabel + '" usando IA.\nO conteúdo atual será substituído. Continuar?')) {
+            return;
+        }
+
+        this.classList.add('loading');
+        const originalText = this.innerHTML;
+        this.innerHTML = '<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Gerando conteúdo com IA...';
+        this.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('tone', selectedTone);
+
+            const response = await fetch('{% url "dashboard:landing_generate_ai" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                document.getElementById('hero_title').value = data.data.hero_title;
+                document.getElementById('hero_subtitle').value = data.data.hero_subtitle;
+                document.getElementById('about_section').value = data.data.about_section;
+                document.getElementById('cta_text').value = data.data.cta_text;
+                document.getElementById('meta_title').value = data.data.meta_title;
+                document.getElementById('meta_description').value = data.data.meta_description;
+
+                if (data.extended) {
+                    console.log('Extended AI Content (V2):', data.extended);
+                }
+
+                showToast('✅ Conteúdo gerado com sucesso! Revise e clique em Salvar.', 'success');
+            } else {
+                showToast('❌ Erro: ' + (data.error || 'Falha desconhecida'), 'error');
+                console.error('AI Generation Error:', data.error);
+            }
+        } catch (error) {
+            showToast('❌ Erro de conexão. Verifique sua internet e tente novamente.', 'error');
+            console.error('Network Error:', error);
+        } finally {
+            this.classList.remove('loading');
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

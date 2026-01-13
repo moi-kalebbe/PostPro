@@ -101,6 +101,16 @@ class Project(models.Model):
         help_text="Quantidade de envios"
     )
     
+    # ===== PLANO DO CLIENTE =====
+    client_plan = models.ForeignKey(
+        'agencies.AgencyClientPlan',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects',
+        help_text="Plano do cliente para este projeto"
+    )
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -158,6 +168,29 @@ class Project(models.Model):
         """Increment post counter."""
         self.total_posts_generated += count
         self.save(update_fields=['total_posts_generated'])
+    
+    def get_monthly_limit(self) -> int:
+        """Retorna limite mensal de posts (do plano ou padrão da agência)."""
+        if self.client_plan:
+            return self.client_plan.posts_per_month
+        return self.agency.monthly_posts_limit
+    
+    def get_current_month_posts(self) -> int:
+        """Conta posts do mês atual para este projeto."""
+        from django.utils import timezone
+        now = timezone.now()
+        return self.posts.filter(
+            created_at__year=now.year,
+            created_at__month=now.month
+        ).count()
+    
+    def can_generate_post(self) -> bool:
+        """Verifica se pode gerar mais posts baseado no plano."""
+        return self.get_current_month_posts() < self.get_monthly_limit()
+    
+    def get_posts_remaining(self) -> int:
+        """Retorna quantos posts restam neste mês."""
+        return max(0, self.get_monthly_limit() - self.get_current_month_posts())
     
     def get_magic_link_url(self) -> str:
         """Get the public magic link URL for this project."""

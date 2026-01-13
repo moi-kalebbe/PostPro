@@ -5,6 +5,7 @@ Project forms.
 from django import forms
 from .models import Project, ProjectContentSettings
 from services.wuzapi import WuzapiService
+from apps.agencies.models import AgencyClientPlan
 
 
 # ============================================================================
@@ -100,6 +101,18 @@ class ProjectForm(forms.ModelForm):
     )
     
     # ============================================================================
+    # Client Plan Field
+    # ============================================================================
+    
+    client_plan = forms.ModelChoiceField(
+        queryset=AgencyClientPlan.objects.none(),
+        required=False,
+        label='Plano do Cliente',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Plano que define o limite mensal de posts'
+    )
+    
+    # ============================================================================
     # WordPress Fields
     # ============================================================================
     
@@ -184,7 +197,7 @@ class ProjectForm(forms.ModelForm):
         model = Project
         fields = [
             'name', 'wordpress_url', 'wordpress_username',
-            'client_name', 'client_email', 'client_phone',
+            'client_name', 'client_email', 'client_phone', 'client_plan',
             'text_model', 'image_model', 'research_model',
             'tone', 'image_style', 'is_active'
         ]
@@ -218,8 +231,21 @@ class ProjectForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, agency=None, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Filtrar planos pela agência
+        if agency:
+            self.fields['client_plan'].queryset = AgencyClientPlan.objects.filter(
+                agency=agency,
+                is_active=True
+            ).order_by('order', 'posts_per_month')
+        elif self.instance.pk and self.instance.agency:
+            self.fields['client_plan'].queryset = AgencyClientPlan.objects.filter(
+                agency=self.instance.agency,
+                is_active=True
+            ).order_by('order', 'posts_per_month')
+        
         if self.instance.pk:
             # Load initial values from related ContentSettings
             try:

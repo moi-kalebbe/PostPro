@@ -21,6 +21,9 @@ urlpatterns = [
     # WhatsApp Configuration
     path('dashboard/whatsapp/', include('apps.agencies.urls_whatsapp')),
     
+    # Landing Page & Leads Management (Dashboard)
+    path('dashboard/', include('apps.agencies.urls_landing')),
+    
     # Admin Panel (Super Admin)
     path('admin/', include('apps.agencies.urls_admin')),
     
@@ -33,9 +36,13 @@ urlpatterns = [
     # API (Webhooks for WordPress)
     path('api/v1/', include('apps.webhooks.urls')),
     
+    # Public Landing Pages (agencies)
+    path('p/', include('apps.agencies.urls_public')),
+    
     # Home redirect
     path('', include('apps.accounts.urls_home')),
 ]
+
 
 # Serve static and media files in development
 if settings.DEBUG:

@@ -33,6 +33,14 @@ VALID_TEXT_MODELS = [
     'openai/gpt-5.2-pro',
     'mistralai/mistral-large-3-2512',
     'mistralai/codestral-2508',
+    # New models added 2026-01-12
+    'google/gemma-3-27b:free',
+    'qwen/qwen2.5-7b-instruct',
+    'mistralai/ministral-3-14b-2512',
+    'qwen/qwen3-vl-8b-instruct',
+    'qwen/qwen3-vl-30b-a3b-instruct',
+    'mistralai/mixtral-8x7b-instruct',
+    'openai/gpt-oss-120b',
 ]
 
 VALID_IMAGE_MODELS = [

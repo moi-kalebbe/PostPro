@@ -176,6 +176,7 @@ class OpenRouterService:
         model: str = "anthropic/claude-3.5-sonnet",
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        top_p: float = 1.0,
     ) -> OpenRouterTextResult:
         """
         Generate text completion.
@@ -208,6 +209,7 @@ class OpenRouterService:
             "messages": valid_messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "top_p": top_p,
         }
         
         last_error = None
