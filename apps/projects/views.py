@@ -633,22 +633,26 @@ def project_plugin_download_view(request, token):
     
     project = get_object_or_404(Project, magic_link_token=token)
     
-    # Check for plugin file
-    plugin_path = os.path.join(
-        django_settings.MEDIA_ROOT,
-        'plugins',
-        'postpro-plugin.zip'
-    )
+    # Check for plugin file in priority order
+    possible_paths = []
     
-    if not os.path.exists(plugin_path):
-        # Fallback: Check in static files
-        plugin_path = os.path.join(
-            django_settings.STATIC_ROOT or django_settings.BASE_DIR / 'static',
-            'plugins',
-            'postpro-plugin.zip'
-        )
+    # 1. Media Root (User uploads or overrides)
+    possible_paths.append(os.path.join(django_settings.MEDIA_ROOT, 'plugins', 'postpro-plugin.zip'))
     
-    if not os.path.exists(plugin_path):
+    # 2. Static Root (Collected static files - Production)
+    if django_settings.STATIC_ROOT:
+        possible_paths.append(os.path.join(django_settings.STATIC_ROOT, 'plugins', 'postpro-plugin.zip'))
+        
+    # 3. Static Source (Development or if collectstatic failed)
+    possible_paths.append(os.path.join(django_settings.BASE_DIR, 'static', 'plugins', 'postpro-plugin.zip'))
+    
+    plugin_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            plugin_path = path
+            break
+            
+    if not plugin_path:
         return HttpResponse(
             "Plugin não encontrado. Entre em contato com o suporte.",
             status=404
