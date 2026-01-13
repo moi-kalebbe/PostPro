@@ -312,9 +312,9 @@ def agency_create_view(request):
         plan = request.POST.get('plan', 'starter')
         send_whatsapp = request.POST.get('send_whatsapp') == 'on'
         
-        # Validation
-        if not agency_name or not owner_name or not owner_phone:
-            messages.error(request, 'Nome da agência, nome do responsável e telefone são obrigatórios.')
+        # Validation - Email agora é obrigatório para login
+        if not agency_name or not owner_name or not owner_phone or not owner_email:
+            messages.error(request, 'Nome da agência, nome do responsável, telefone e email são obrigatórios.')
             return render(request, 'admin_panel/agency_form.html', {
                 'plan_limits': PLAN_LIMITS,
                 'form_data': request.POST,
@@ -326,9 +326,9 @@ def agency_create_view(request):
         if not phone_cleaned.startswith('55'):
             phone_cleaned = '55' + phone_cleaned
         
-        # Check if user already exists
-        if User.objects.filter(username=phone_cleaned).exists():
-            messages.error(request, f'Já existe um usuário com este telefone: {owner_phone}')
+        # Check if user already exists (by email - usado como username para login)
+        if User.objects.filter(email=owner_email).exists():
+            messages.error(request, f'Já existe um usuário com este email: {owner_email}')
             return render(request, 'admin_panel/agency_form.html', {
                 'plan_limits': PLAN_LIMITS,
                 'form_data': request.POST,
@@ -351,10 +351,10 @@ def agency_create_view(request):
         # Generate password
         password = generate_password()
         
-        # Create user
+        # Create user (usando email como username para login funcionar)
         user = User.objects.create_user(
-            username=phone_cleaned,
-            email=owner_email if owner_email else f"{phone_cleaned}@postpro.local",
+            username=owner_email,
+            email=owner_email,
             password=password,
             first_name=owner_name.split()[0] if owner_name else '',
             last_name=' '.join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else '',
@@ -385,7 +385,7 @@ Sua agência *{agency_name}* foi criada com sucesso!
 
 📱 *Seus dados de acesso:*
 🌐 URL: {site_url}/auth/login/
-👤 Login: {phone_cleaned}
+👤 Login: {owner_email}
 🔑 Senha: {password}
 
 📊 *Seu plano:*
@@ -413,7 +413,7 @@ Acesse agora e comece a automatizar! 🚀"""
         if whatsapp_sent:
             messages.success(request, f'Agência "{agency_name}" criada! Credenciais enviadas via WhatsApp para {owner_phone}.')
         else:
-            messages.success(request, f'Agência "{agency_name}" criada! Login: {phone_cleaned} / Senha: {password}')
+            messages.success(request, f'Agência "{agency_name}" criada! Login: {owner_email} / Senha: {password}')
         
         return redirect('admin_panel:agencies_list')
     

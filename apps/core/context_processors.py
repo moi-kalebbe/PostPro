@@ -36,7 +36,7 @@ def agency_branding(request):
             'is_super_admin': True,
             'agency_logo_light': '/static/img/superadmin-logo-light.png',
             'agency_logo_dark': '/static/img/superadmin-logo-dark.png',
-            'agency_logo_current': '/static/img/superadmin-logo-light.png' if current_theme == 'dark' else '/static/img/superadmin-logo-dark.png',
+            'agency_logo_current': '/static/img/superadmin-logo-dark.png' if current_theme == 'dark' else '/static/img/superadmin-logo-light.png',
             'agency_favicon': '/static/img/superadmin-favicon.png',
         })
         return defaults
