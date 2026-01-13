@@ -1,4 +1,8 @@
-{% extends 'base.html' %}
+import os
+
+FILE_PATH = os.path.join('templates', 'agencies', 'whatsapp_config.html')
+
+CONTENT = """{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Configurar WhatsApp - {{ agency.name }}{% endblock %}
@@ -291,3 +295,18 @@
     });
 </script>
 {% endblock %}
+"""
+
+def fix_file():
+    print(f"📄 Reescrevendo {FILE_PATH} com versão limpa e corrigida...")
+    try:
+        with open(FILE_PATH, 'w', encoding='utf-8') as f:
+            f.write(CONTENT)
+        print("✅ Arquivo reescrito com sucesso!")
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao escrever arquivo: {e}")
+        return False
+
+if __name__ == "__main__":
+    fix_file()
